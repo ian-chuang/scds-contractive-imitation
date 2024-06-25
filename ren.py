@@ -13,6 +13,9 @@ class REN(nn.Module):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
 
+        # IMPORTANT TODO: Fix all the parameters and fixed tensors and their device!!!!!!
+        # TODO: Change initialization point to focus
+
         NOTE: The equations for REN upon which this class is built can be found in the following paper
         "Revay M et al. Recurrent equilibrium networks: Flexible dynamic models with guaranteed
         stability and robustness."
@@ -59,7 +62,7 @@ class REN(nn.Module):
         self.contraction_rate_lb = contraction_rate_lb
 
         # initialize internal state
-        self.x = x_init if x_init is not None else nn.Parameter(torch.zeros(1, 1, self.dim_x))
+        self.x = x_init if x_init is not None else torch.zeros(1, 1, self.dim_x)
 
         # auxiliary matrices
         self.X_shape = (2 * self.dim_x + self.l, 2 * self.dim_x + self.l)
@@ -77,7 +80,7 @@ class REN(nn.Module):
         self.D12_shape = (self.l, self.dim_in)
 
         # define training nn params TODO: Replace this with straightforward definition
-        self.training_param_names = ['X', 'Y', 'B2', 'C2', 'D21', 'D22', 'D12']
+        self.training_param_names = ['X', 'Y', 'B2', 'C2', 'D22', 'D12']
         for name in self.training_param_names:
             # read the defined shapes
             shape = getattr(self, name + '_shape')
@@ -92,23 +95,27 @@ class REN(nn.Module):
             assert dim_out == dim_x, assert_msg
 
             # set D21 and D22 to zero and C_2 to identity
-            self.D21 = nn.Parameter(torch.zeros(*self.D21_shape) * initialization_std)
-            self.D22 = nn.Parameter(torch.zeros(*self.D22_shape) * initialization_std)
-            self.C2 = nn.Parameter(torch.eye(*self.C2_shape) * initialization_std)
+            self.D21 = torch.zeros(*self.D21_shape)
+            self.D22 = torch.zeros(*self.D22_shape)
+            self.C2 = torch.eye(*self.C2_shape)
 
         # linear output
         if self.linear_output:
             # set D21 to zero
-            self.D21 = nn.Parameter(torch.zeros(*self.D21_shape) * initialization_std)
+            self.D21 = torch.zeros(*self.D21_shape) * initialization_std
+
+        else:
+            # set D21 to free parameter
+            self.D21 = nn.Parameter(torch.randn(*self.D21_shape) * initialization_std)
 
         # auxiliary elements
         self.epsilon = posdef_tol
-        self.F = nn.Parameter(torch.zeros(dim_x, dim_x))
-        self.B1 = nn.Parameter(torch.zeros(dim_x, l))
-        self.E = nn.Parameter(torch.zeros(dim_x, dim_x))
-        self.Lambda = nn.Parameter(torch.ones(l))
-        self.C1 = nn.Parameter(torch.zeros(l, dim_x))
-        self.D11 = nn.Parameter(torch.zeros(l, l))
+        self.F = torch.zeros(dim_x, dim_x)
+        self.B1 = torch.zeros(dim_x, l)
+        self.E = torch.zeros(dim_x, dim_x)
+        self.Lambda = torch.ones(l)
+        self.C1 = torch.zeros(l, dim_x)
+        self.D11 = torch.zeros(l, l)
 
         # set contraction params
         self.update_model_param()
@@ -116,7 +123,7 @@ class REN(nn.Module):
     def set_x_init(self, x_init):
 
         # fix the initial condition of the internal state
-        self.x = nn.Parameter(x_init)
+        self.x = x_init
 
     def update_model_param(self):
 
@@ -129,18 +136,18 @@ class REN(nn.Module):
         P = H33
 
         # nn state dynamics
-        self.F = nn.Parameter(H31)
-        self.B1 = nn.Parameter(H32)
+        self.F = H31
+        self.B1 = H32
 
         # nn output
-        self.E = nn.Parameter(0.5 * (H11 + self.contraction_rate_lb * P + self.Y - self.Y.T))
-        self.eye_mat = nn.Parameter(torch.eye(self.l))
+        self.E = 0.5 * (H11 + self.contraction_rate_lb * P + self.Y - self.Y.T)
+        self.eye_mat = torch.eye(self.l)
 
         # v signal
         # NOTE: change the following lines when you don't want a strictly acyclic REN!
-        self.Lambda = nn.Parameter(0.5 * torch.diag(H22))
-        self.D11 = nn.Parameter(-torch.tril(H22, diagonal=-1))
-        self.C1 = nn.Parameter(-H21)
+        self.Lambda = 0.5 * torch.diag(H22)
+        self.D11 = -torch.tril(H22, diagonal=-1)
+        self.C1 = -H21
 
     def forward(self, u_in):
         """ Forward pass of REN.
@@ -163,10 +170,9 @@ class REN(nn.Module):
             w = w + (self.eye_mat[i, :] * torch.tanh(v / self.Lambda[i])).reshape(batch_size, 1, self.l)
 
         # compute next state using Eq. 18
-        self.x = nn.Parameter(F.linear(
+        self.x = F.linear(
             F.linear(self.x, self.F) + F.linear(w, self.B1) + F.linear(u_in, self.B2),
-            self.E.inverse()
-        ))
+            self.E.inverse())
 
         y_out = F.linear(self.x, self.C2) + F.linear(w, self.D21) + F.linear(u_in, self.D22)
         return y_out
@@ -189,3 +195,25 @@ class REN(nn.Module):
 
         stacked_outs = torch.cat(outs, dim=0)
         return stacked_outs
+
+    def to(self, *args, **kwargs):
+        """ Override the "to" method to automatically move all non-parameter Tensors to the device.
+
+        Returns:
+            REN: module and tensors and params all on the same device.
+        """
+        super(REN, self).to(*args, **kwargs)
+
+        # move the non-trainable tensors to the same device
+        self.x = self.x.to(*args, **kwargs)
+        self.D21 = self.D21.to(*args, **kwargs)
+        self.D22 = self.D22.to(*args, **kwargs)
+        self.C2 = self.C2.to(*args, **kwargs)
+        self.F = self.F.to(*args, **kwargs)
+        self.B1 = self.B1.to(*args, **kwargs)
+        self.E = self.E.to(*args, **kwargs)
+        self.Lambda = self.Lambda.to(*args, **kwargs)
+        self.C1 = self.C1.to(*args, **kwargs)
+        self.D11 = self.D11.to(*args, **kwargs)
+        self.eye_mat = self.eye_mat.to(*args, **kwargs)
+        return self
