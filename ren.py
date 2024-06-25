@@ -80,33 +80,20 @@ class REN(nn.Module):
         self.D12_shape = (self.l, self.dim_in)
 
         # define training nn params TODO: Replace this with straightforward definition
-        self.training_param_names = ['X', 'Y', 'B2', 'C2', 'D22', 'D12']
+        self.training_param_names = ['X', 'Y', 'B2', 'C2', 'D21', 'D22', 'D12']
+        if self.linear_output:
+            # set D21 to zero
+            self.training_param_names.remove('D21') # not trainable anymore
+            self.D21 = torch.zeros(*self.D21_shape) * initialization_std
+            # set D22 to zero
+            self.D22 = torch.zeros(*self.D22_shape) * initialization_std
+            self.training_param_names.remove('D22') # not trainable anymore
+
         for name in self.training_param_names:
             # read the defined shapes
             shape = getattr(self, name + '_shape')
-
             # define each param as nn.Parameter
             setattr(self, name, nn.Parameter((torch.randn(*shape) * initialization_std)))
-
-        # bypass output
-        if self.bypass_output:
-            assert_msg = f'Output and internal state must be the same dimension if bypass_output is True.' \
-                        f'but they are {dim_out}, {dim_x}.'
-            assert dim_out == dim_x, assert_msg
-
-            # set D21 and D22 to zero and C_2 to identity
-            self.D21 = torch.zeros(*self.D21_shape)
-            self.D22 = torch.zeros(*self.D22_shape)
-            self.C2 = torch.eye(*self.C2_shape)
-
-        # linear output
-        if self.linear_output:
-            # set D21 to zero
-            self.D21 = torch.zeros(*self.D21_shape) * initialization_std
-
-        else:
-            # set D21 to free parameter
-            self.D21 = nn.Parameter(torch.randn(*self.D21_shape) * initialization_std)
 
         # auxiliary elements
         self.epsilon = posdef_tol
@@ -117,7 +104,7 @@ class REN(nn.Module):
         self.C1 = torch.zeros(l, dim_x)
         self.D11 = torch.zeros(l, l)
 
-        # set contraction params
+        # update untrainable model params
         self.update_model_param()
 
     def set_x_init(self, x_init):
@@ -161,7 +148,6 @@ class REN(nn.Module):
         batch_size = u_in.shape[0]
 
         w = torch.zeros(batch_size, 1, self.l).to(device) # TODO: Fix this later!
-        v = F.linear(self.x, self.C1[0, :]) + F.linear(u_in, self.D12[0, :])
 
         # update each row of w using Eq. (8) with a lower triangular D11
         for i in range(self.l):
@@ -177,43 +163,21 @@ class REN(nn.Module):
         y_out = F.linear(self.x, self.C2) + F.linear(w, self.D21) + F.linear(u_in, self.D22)
         return y_out
 
-    def forward_trajectory(self, u_in: torch.Tensor, x_init: torch.Tensor, len: int = 20):
+    def forward_trajectory(self, u_in: torch.Tensor, x_init: torch.Tensor, horizon: int = 20):
         """ Get a trajectory of forward passes.
 
         Args:
             u_in (torch.Tensor): Input at each time step. Must be fixed for autonomous systems.
             x_init (torch.Tensor): Initial condition of the internal state.
-            len (int, optional): Length of the forward trajectory. Defaults to 20.
+            horizon (int, optional): Length of the forward trajectory. Defaults to 20.
         """
 
         self.set_x_init(x_init)
 
         outs = []
-        for _ in range(len):
+        for _ in range(horizon):
             out = self.forward(u_in)
             outs.append(out)
 
         stacked_outs = torch.cat(outs, dim=0)
         return stacked_outs
-
-    def to(self, *args, **kwargs):
-        """ Override the "to" method to automatically move all non-parameter Tensors to the device.
-
-        Returns:
-            REN: module and tensors and params all on the same device.
-        """
-        super(REN, self).to(*args, **kwargs)
-
-        # move the non-trainable tensors to the same device
-        self.x = self.x.to(*args, **kwargs)
-        self.D21 = self.D21.to(*args, **kwargs)
-        self.D22 = self.D22.to(*args, **kwargs)
-        self.C2 = self.C2.to(*args, **kwargs)
-        self.F = self.F.to(*args, **kwargs)
-        self.B1 = self.B1.to(*args, **kwargs)
-        self.E = self.E.to(*args, **kwargs)
-        self.Lambda = self.Lambda.to(*args, **kwargs)
-        self.C1 = self.C1.to(*args, **kwargs)
-        self.D11 = self.D11.to(*args, **kwargs)
-        self.eye_mat = self.eye_mat.to(*args, **kwargs)
-        return self

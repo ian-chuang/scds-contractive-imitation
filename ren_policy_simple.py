@@ -15,16 +15,16 @@ timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 writer = SummaryWriter('runs/fashion_trainer_{}'.format(timestamp))
 
 
-def linear_ref(start_point, num_data_points, device):
+def linear_ref(start_point, horizon, device):
     # create a 2D reference trajectory
-    ref = torch.from_numpy(np.array([[i, i] for i in np.linspace(start_point, 0, num_data_points)], dtype=np.float32))
+    ref = torch.from_numpy(np.array([[i, i] for i in np.linspace(start_point, 0, horizon)], dtype=np.float32))
     ref = ref.unsqueeze(1)
     ref.to(device)
     return ref
 
-def polynomial_ref(start_point, num_data_points, device, coefficients=[16, -16, 0.4, 0]):
+def polynomial_ref(start_point, horizon, device, coefficients=[16, -16, 0.4, 0]):
     # Generate x values from start_point to 0
-    x_values = np.linspace(start_point, 0, num_data_points, dtype=np.float32)
+    x_values = np.linspace(start_point, 0, horizon, dtype=np.float32)
 
     # Create the polynomial from the coefficients
     poly = np.poly1d(coefficients)
@@ -40,9 +40,9 @@ def polynomial_ref(start_point, num_data_points, device, coefficients=[16, -16, 
 # experiment configs
 device = "cpu" #"cuda:0" if torch.cuda.is_available() else "cpu"
 start_point = 1
-num_data_points = 500
+horizon = 500
 
-ref = polynomial_ref(start_point, num_data_points, device)
+ref = polynomial_ref(start_point, horizon, device)
 
 # input is set to zero
 u_in = torch.zeros((1, 1, 2), device=device)
@@ -69,7 +69,7 @@ log_epoch = 100
 for epoch in range(total_epochs):
 
     optimizer.zero_grad()
-    out = ren_module.forward_trajectory(u_in, x_init, num_data_points)
+    out = ren_module.forward_trajectory(u_in, x_init, horizon)
 
     loss = criterion(out, ref)
     loss.backward()
