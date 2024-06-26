@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-device = "cpu" # cuda:0" if torch.cuda.is_available() else "cpu"
+device = "cpu" #"cuda:0" if torch.cuda.is_available() else "cpu"
 
 class REN(nn.Module):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int,
@@ -62,7 +62,7 @@ class REN(nn.Module):
         self.contraction_rate_lb = contraction_rate_lb
 
         # initialize internal state
-        self.x = x_init if x_init is not None else torch.zeros(1, 1, self.dim_x)
+        self.x = x_init if x_init is not None else torch.zeros(1, 1, self.dim_x, device=device)
 
         # auxiliary matrices
         self.X_shape = (2 * self.dim_x + self.l, 2 * self.dim_x + self.l)
@@ -84,27 +84,27 @@ class REN(nn.Module):
         if self.linear_output:
             # set D21 to zero
             self.training_param_names.remove('D21') # not trainable anymore
-            self.D21 = torch.zeros(*self.D21_shape) * initialization_std
+            self.D21 = torch.zeros(*self.D21_shape, device=device) * initialization_std
             # set D22 to zero
-            self.D22 = torch.zeros(*self.D22_shape) * initialization_std
+            self.D22 = torch.zeros(*self.D22_shape, device=device) * initialization_std
             self.training_param_names.remove('D22') # not trainable anymore
 
         for name in self.training_param_names:
             # read the defined shapes
             shape = getattr(self, name + '_shape')
             # define each param as nn.Parameter
-            setattr(self, name, nn.Parameter((torch.randn(*shape) * initialization_std)))
+            setattr(self, name, nn.Parameter((torch.randn(*shape, device=device) * initialization_std)))
 
         # auxiliary elements
         self.epsilon = posdef_tol
-        self.F = torch.zeros(dim_x, dim_x)
-        self.B1 = torch.zeros(dim_x, l)
-        self.E = torch.zeros(dim_x, dim_x)
-        self.Lambda = torch.ones(l)
-        self.C1 = torch.zeros(l, dim_x)
-        self.D11 = torch.zeros(l, l)
+        self.F = torch.zeros(dim_x, dim_x, device=device)
+        self.B1 = torch.zeros(dim_x, l, device=device)
+        self.E = torch.zeros(dim_x, dim_x, device=device)
+        self.Lambda = torch.ones(l, device=device)
+        self.C1 = torch.zeros(l, dim_x, device=device)
+        self.D11 = torch.zeros(l, l, device=device)
 
-        # update untrainable model params
+        # update non-trainable model params
         self.update_model_param()
 
     def set_x_init(self, x_init):
@@ -115,7 +115,7 @@ class REN(nn.Module):
     def update_model_param(self):
 
         # dependent params
-        H = torch.matmul(self.X.T, self.X) + self.epsilon * torch.eye(2 * self.dim_x + self.l)
+        H = torch.matmul(self.X.T, self.X) + self.epsilon * torch.eye(2 * self.dim_x + self.l, device=device)
         h1, h2, h3 = torch.split(H, [self.dim_x, self.l, self.dim_x], dim=0)
         H11, H12, H13 = torch.split(h1, [self.dim_x, self.l, self.dim_x], dim=1)
         H21, H22, _ = torch.split(h2, [self.dim_x, self.l, self.dim_x], dim=1)
@@ -128,7 +128,7 @@ class REN(nn.Module):
 
         # nn output
         self.E = 0.5 * (H11 + self.contraction_rate_lb * P + self.Y - self.Y.T)
-        self.eye_mat = torch.eye(self.l)
+        self.eye = torch.eye(self.l, device=device)
 
         # v signal
         # NOTE: change the following lines when you don't want a strictly acyclic REN!
@@ -147,13 +147,13 @@ class REN(nn.Module):
         """
         batch_size = u_in.shape[0]
 
-        w = torch.zeros(batch_size, 1, self.l).to(device) # TODO: Fix this later!
+        w = torch.zeros(batch_size, 1, self.l, device=device)
 
         # update each row of w using Eq. (8) with a lower triangular D11
         for i in range(self.l):
             #  v is element i of v with dim (batch_size, 1)
             v = F.linear(self.x, self.C1[i, :]) + F.linear(w, self.D11[i, :]) + F.linear(u_in, self.D12[i,:])
-            w = w + (self.eye_mat[i, :] * torch.tanh(v / self.Lambda[i])).reshape(batch_size, 1, self.l)
+            w = w + (self.eye[i, :] * torch.tanh(v / self.Lambda[i])).reshape(batch_size, 1, self.l)
 
         # compute next state using Eq. 18
         self.x = F.linear(
@@ -181,3 +181,22 @@ class REN(nn.Module):
 
         stacked_outs = torch.cat(outs, dim=0)
         return stacked_outs
+
+
+    # def to(self, device):
+    #     super(REN, self).to(device)
+
+    #     print(f'Moving model and tensors to {device}')
+    #     # move the non-trainable tensors to the same device
+    #     self.x = self.x.to(device)
+    #     self.D21 = self.D21.to(device)
+    #     self.D22 = self.D22.to(device)
+    #     self.C2 = self.C2.to(device)
+    #     self.F = self.F.to(device)
+    #     self.B1 = self.B1.to(device)
+    #     self.E = self.E.to(device)
+    #     self.Lambda = self.Lambda.to(device)
+    #     self.C1 = self.C1.to(device)
+    #     self.D11 = self.D11.to(device)
+    #     self.eye_mat = self.eye_mat.to(device)
+    #     return self

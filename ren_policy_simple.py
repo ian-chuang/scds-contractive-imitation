@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-writer = SummaryWriter('runs/fashion_trainer_{}'.format(timestamp))
+writer = SummaryWriter('runs/ren_trainer_{}'.format(timestamp))
 
 
 def linear_ref(start_point, horizon, device):
@@ -40,29 +40,30 @@ def polynomial_ref(start_point, horizon, device, coefficients=[16, -16, 0.4, 0])
 # experiment configs
 device = "cpu" #"cuda:0" if torch.cuda.is_available() else "cpu"
 start_point = 1
-horizon = 500
+horizon = 100
+dim_x = 2
 
-ref = polynomial_ref(start_point, horizon, device)
+ref = linear_ref(start_point, horizon, device)
 
 # input is set to zero
 u_in = torch.zeros((1, 1, 2), device=device)
-x_init = 0.4 * torch.ones((1, 1, 2), device=device)
+x_init = start_point * torch.ones((1, 1, dim_x), device=device)
 
 # define REN
-ren_module = REN(dim_in=2, dim_out=2, dim_x=2, l=8, initialization_std=0.1, linear_output=True,
+ren_module = REN(dim_in=2, dim_out=2, dim_x=dim_x, l=8, initialization_std=0.1, linear_output=True,
                  contraction_rate_lb=1.0)
-ren_module.to(device)
+ren_module.to(device=device)
 
 
 # optimizer
-optimizer = torch.optim.Adam(ren_module.parameters(), lr=0.01)
+optimizer = torch.optim.Adam(ren_module.parameters(), lr=0.001)
 
 # loss
 criterion = nn.MSELoss()
 
 # temps
 trajectories = []
-total_epochs = 100000
+total_epochs = 1000
 log_epoch = 100
 
 # training epochs
@@ -79,16 +80,30 @@ for epoch in range(total_epochs):
 
     if epoch % log_epoch == 0:
         print(f'Epoch: {epoch}/{total_epochs} | Loss: {loss}')
-        trajectories.append(out.detach().numpy())
+        trajectories.append(out.detach().cpu().numpy())
 
     writer.add_scalars('Training Loss',
                     { 'Training' : loss.item()},
                     epoch + 1)
     writer.flush()
 
+# plot the training trajectories
 fig = plt.figure(figsize=(10, 10), dpi=120)
 for idx, tr in enumerate(trajectories):
     plt.plot(tr[:, 0, 1], linewidth=idx * 0.05, c='blue')
-plt.plot(ref[:, 0, 0], linewidth=2.0, c='green')
-plt.savefig('ren_out.png')
+plt.plot(ref[:, 0, 0], linewidth=1, linestyle='dashed', c='green')
+plt.savefig(f'runs/ren_trainer_{timestamp}.png')
 
+# generate rollouts
+rollouts = []
+rollouts_horizon = 5 * horizon
+num_rollouts = 10
+
+for _ in range(num_rollouts):
+    rollouts.append(ren_module.forward_trajectory(u_in, x_init, rollouts_horizon).detach().cpu().numpy())
+
+fig = plt.figure(figsize=(10, 10), dpi=120)
+for idx, tr in enumerate(rollouts):
+    plt.plot(tr[:, 0, 1], linewidth=0.1, c='orange')
+plt.plot(ref[:, 0, 0], linewidth=1, linestyle='dashed', c='green')
+plt.savefig(f'runs/ren_rollouts_{timestamp}.png')
