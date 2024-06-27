@@ -181,22 +181,3 @@ class REN(nn.Module):
 
         stacked_outs = torch.cat(outs, dim=0)
         return stacked_outs
-
-
-    # def to(self, device):
-    #     super(REN, self).to(device)
-
-    #     print(f'Moving model and tensors to {device}')
-    #     # move the non-trainable tensors to the same device
-    #     self.x = self.x.to(device)
-    #     self.D21 = self.D21.to(device)
-    #     self.D22 = self.D22.to(device)
-    #     self.C2 = self.C2.to(device)
-    #     self.F = self.F.to(device)
-    #     self.B1 = self.B1.to(device)
-    #     self.E = self.E.to(device)
-    #     self.Lambda = self.Lambda.to(device)
-    #     self.C1 = self.C1.to(device)
-    #     self.D11 = self.D11.to(device)
-    #     self.eye_mat = self.eye_mat.to(device)
-    #     return self
