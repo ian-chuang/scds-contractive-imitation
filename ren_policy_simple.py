@@ -86,8 +86,7 @@ def lasa_ref(motion_shape: str, horizon: int, device: str):
     y_train = torch.from_numpy(vel.astype(np.float32))
     x_train = torch.from_numpy(pos.astype(np.float32))
     x_train = x_train.view(x_train.shape[0], 1, x_train.shape[1])
-    x_train.requires_grad = True
-    y_train.requires_grad = True
+
     x_train = x_train.to(device)
     y_train = y_train.to(device)
 
@@ -113,6 +112,7 @@ if __name__ == '__main__':
     # TODO: torch lightening
     # TODO: fix the batch index
     # TODO: neural ode layer instead of consecutive rollouts
+    # TODO: fix u_in size
 
     # parse and set experiment arguments
     args = argument_parser()
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     ren_module.to(device=device)
 
     # optimizer
-    optimizer = torch.optim.Adam(ren_module.parameters(), lr=0.001, weight_decay=0.01)
+    optimizer = torch.optim.Adam(ren_module.parameters(), lr=0.01)
 
     # loss
     criterion = nn.MSELoss()
@@ -160,6 +160,7 @@ if __name__ == '__main__':
     trajectories = []
     best_model_stat_dict = None
     best_loss = torch.tensor(float('inf'))
+    best_train_epoch = 0
 
     # experiment log setup
     timestamp = datetime.now().strftime('%d_%H%M')
@@ -167,27 +168,43 @@ if __name__ == '__main__':
     writer_dir = f'boards/ren-training-{experiment_name}'
     writer = SummaryWriter(writer_dir)
 
+    # lr scheduler
+    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0,
+                            end_factor=0.01, total_iters=total_epochs)
+
     # training epochs
     for epoch in range(total_epochs):
-
+        # zero grad
         optimizer.zero_grad()
         out = ren_module.forward_trajectory(u_in, x_init, ren_horizon)
 
+        # loss
         loss = criterion(out, expert_trajectory)
+
+        # best model
         if loss < best_loss:
             best_model_stat_dict = copy.deepcopy(ren_module.state_dict())
+            best_loss = loss
+            best_train_epoch = epoch
 
+        # check no progress
+        if epoch - best_train_epoch > 5000:
+            print(f'No significant progress in a while, aborting training')
+            break
+
+        # backward and steps
         loss.backward()
         optimizer.step()
+        scheduler.step()
         ren_module.update_model_param()
 
+        # logs
         if epoch % log_epoch == 0:
-            print(f'Epoch: {epoch}/{total_epochs} | Loss: {loss}')
+            print(f'Epoch: {epoch}/{total_epochs} | Best Loss: {best_loss:.8f} | Best Epoch: {best_train_epoch} | LR: {scheduler.get_last_lr()[0]:.6f}')
             trajectories.append(out.detach().cpu().numpy())
 
-        writer.add_scalars('Training Loss',
-                        { 'Training' : loss.item()},
-                        epoch + 1)
+        # tensorboard
+        writer.add_scalars('Training Loss', {'Training' : loss.item()}, epoch + 1)
         writer.flush()
 
     # save the best model
@@ -199,6 +216,7 @@ if __name__ == '__main__':
 
     # load the best model for plotting
     ren_module.load_state_dict(best_model_stat_dict)
+    ren_module.update_model_param()
 
     # TODO: move plots to plot tools
     # plot the training trajectories
