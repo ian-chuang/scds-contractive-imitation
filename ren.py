@@ -161,6 +161,7 @@ class REN(nn.Module):
             self.E.inverse())
 
         y_out = F.linear(self.x, self.C2) + F.linear(w, self.D21) + F.linear(u_in, self.D22)
+        # TODO: this is kind of a diffeomorphism? replace with a bijection layer of normalizing flow?
         return y_out
 
     def forward_trajectory(self, u_in: torch.Tensor, x_init: torch.Tensor, horizon: int = 20):
