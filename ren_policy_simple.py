@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 import copy
 import torch
-import argparse
 
-import numpy as np
 import torch.nn as nn
-import torch.nn.functional as F
-import pytorch_lightning as pl
 import matplotlib.pyplot as plt
 
 from torch.utils.tensorboard import SummaryWriter
@@ -20,7 +16,7 @@ from dataset import lasa_expert, polynomial_expert, linear_expert
 
 # main entry
 if __name__ == '__main__':
-    # TODO: fix the batch index
+    # TODO: fix the batch index, can we multiple shoot?
     # TODO: neural ode layer instead of consecutive rollouts
 
     # parse and set experiment arguments
@@ -34,13 +30,14 @@ if __name__ == '__main__':
     ren_dim_out = args.dim_out
     ren_l = args.l_hidden
     total_epochs = args.total_epochs
+    patience_epoch = (args.total_epochs // 5) if args.patience_epoch is None else args.patience_epoch
     log_epoch = (args.total_epochs // 10) if args.log_epoch is None else args.log_epoch
+    ren_lr = args.lr
+    ren_lr_start_factor = args.lr_start_factor
+    ren_lr_end_factor = args.lr_end_factor
+
     expert = args.expert
     lasa_motion_shape = args.motion_shape
-
-    ren_lr = 0.01
-    ren_lr_start_factor = 1.0
-    ren_lr_end_factor = 0.01
 
     # set expert traj (equal to ren horizon for now)
     if expert == "poly":
@@ -77,7 +74,7 @@ if __name__ == '__main__':
 
     # experiment log setup
     timestamp = datetime.now().strftime('%d_%H%M')
-    experiment_name = f'{expert}-{ren_horizon}-{ren_dim_x}-{ren_l}-{total_epochs}-{timestamp}'
+    experiment_name = f'{expert}-{lasa_motion_shape}-{ren_horizon}-{ren_dim_x}-{ren_l}-{total_epochs}-{timestamp}'
     writer_dir = f'boards/ren-training-{experiment_name}'
     writer = SummaryWriter(writer_dir)
 
@@ -87,6 +84,7 @@ if __name__ == '__main__':
 
     # training epochs
     for epoch in range(total_epochs):
+
         # zero grad
         optimizer.zero_grad()
         out = ren_module.forward_trajectory(u_in, x_init, ren_horizon)
@@ -101,7 +99,7 @@ if __name__ == '__main__':
             best_train_epoch = epoch
 
         # check no progress
-        if epoch - best_train_epoch > total_epochs // 5:
+        if epoch - best_train_epoch > patience_epoch:
             print(f'No significant progress in a while, aborting training')
             break
 
