@@ -24,11 +24,13 @@ if __name__ == '__main__':
 
     # experiment and REN configs
     device = args.device
+
     ren_horizon = args.horizon
     ren_dim_x = args.dim_x
     ren_dim_in = args.dim_in
     ren_dim_out = args.dim_out
     ren_l = args.l_hidden
+
     total_epochs = args.total_epochs
     patience_epoch = (args.total_epochs // 5) if args.patience_epoch is None else args.patience_epoch
     log_epoch = (args.total_epochs // 10) if args.log_epoch is None else args.log_epoch
@@ -50,14 +52,15 @@ if __name__ == '__main__':
 
     elif expert == "lasa":
         expert_trajectory, dataloader = lasa_expert(lasa_motion_shape, ren_horizon, device)
-        x_init = torch.ones((1, 1, ren_dim_x), device=device)
+        # x_init = torch.ones((1, 1, ren_dim_x), device=device)
+        y_init = torch.Tensor(expert_trajectory[0]).unsqueeze(1)
 
     # input is set to zero
     u_in = torch.zeros((1, 1, 2), device=device)
 
     # define REN
     ren_module = REN(dim_in=ren_dim_in, dim_out=ren_dim_out, dim_x=ren_dim_x, l=ren_l, initialization_std=0.1, linear_output=True,
-                    contraction_rate_lb=1.0)
+                     contraction_rate_lb=1.0)
     ren_module.to(device=device)
 
     # optimizer
@@ -87,7 +90,9 @@ if __name__ == '__main__':
 
         # zero grad
         optimizer.zero_grad()
-        out = ren_module.forward_trajectory(u_in, x_init, ren_horizon)
+
+        # forward pass
+        out = ren_module.forward_trajectory(u_in, y_init, ren_horizon)
 
         # loss
         loss = criterion(out, expert_trajectory)
@@ -139,32 +144,15 @@ if __name__ == '__main__':
     plt.ylabel('dim1')
     plt.savefig(f'{writer_dir}/ren-training-motion-{experiment_name}.png')
 
-    # plot the training trajectories
-    fig = plt.figure(figsize=(10, 10), dpi=120)
-    for idx, tr in enumerate(trajectories):
-        plt.plot(tr[:, 0, 0], linewidth=idx * 0.05, c='blue')
-    plt.plot(expert_trajectory[:, 0, 0], linewidth=1, linestyle='dashed', c='green')
-    plt.xlabel('time')
-    plt.ylabel('dim0')
-    plt.savefig(f'{writer_dir}/ren-training-time-{experiment_name}.png')
-
     # generate rollouts std
     rollouts = []
     rollouts_horizon = 10 * ren_horizon
     num_rollouts = 10
-    x_init_std = 0.1
+    y_init_std = 0.2
 
     for _ in range(num_rollouts):
-        x_init_rollout = x_init + x_init_std * (2 * torch.rand(*x_init.shape, device=device) - 1)
-        rollouts.append(ren_module.forward_trajectory(u_in, x_init_rollout, rollouts_horizon).detach().cpu().numpy())
-
-    fig = plt.figure(figsize=(10, 10), dpi=120)
-    for idx, tr in enumerate(rollouts):
-        plt.plot(tr[:, 0, 0], linewidth = 0.5, c='orange')
-    plt.plot(expert_trajectory[:, 0, 0], linewidth=1, linestyle='dashed', c='green')
-    plt.xlabel('time')
-    plt.ylabel('dim0')
-    plt.savefig(f'{writer_dir}/ren-rollouts-std-time-{experiment_name}.png')
+        y_init_rollout = y_init + y_init_std * (2 * torch.rand(*y_init.shape, device=device) - 1)
+        rollouts.append(ren_module.forward_trajectory(u_in, y_init_rollout, rollouts_horizon).detach().cpu().numpy())
 
     fig = plt.figure(figsize=(10, 10), dpi=120)
     for idx, tr in enumerate(rollouts):
@@ -178,18 +166,10 @@ if __name__ == '__main__':
     rollouts = []
     rollouts_horizon = 10 * ren_horizon
     num_rollouts = 10
-    x_init_rollout = x_init
+    y_init_rollout = y_init
 
     for _ in range(num_rollouts):
-        rollouts.append(ren_module.forward_trajectory(u_in, x_init_rollout, rollouts_horizon).detach().cpu().numpy())
-
-    fig = plt.figure(figsize=(10, 10), dpi=120)
-    for idx, tr in enumerate(rollouts):
-        plt.plot(tr[:, 0, 0], linewidth = 0.5, c='orange')
-    plt.plot(expert_trajectory[:, 0, 0], linewidth=1, linestyle='dashed', c='green')
-    plt.xlabel('time')
-    plt.ylabel('dim0')
-    plt.savefig(f'{writer_dir}/ren-rollouts-time-{experiment_name}.png')
+        rollouts.append(ren_module.forward_trajectory(u_in, y_init_rollout, rollouts_horizon).detach().cpu().numpy())
 
     fig = plt.figure(figsize=(10, 10), dpi=120)
     for idx, tr in enumerate(rollouts):

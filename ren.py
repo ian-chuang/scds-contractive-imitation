@@ -6,15 +6,12 @@ device = "cpu" #"cuda:0" if torch.cuda.is_available() else "cpu"
 
 class REN(nn.Module):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int,
-                 l: int, initialization_std: float = 0.5,
-                 x_init: torch.Tensor = None, bypass_output: bool = False,
-                 linear_output: bool = False, posdef_tol: float = 0.001,
-                 contraction_rate_lb: float = 1.0):
+                 l: int, initialization_std: float = 0.5, linear_output: bool = False,
+                 posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
 
         # IMPORTANT TODO: Fix all the parameters and fixed tensors and their device!!!!!!
-        # TODO: Change initialization point to focus
 
         NOTE: The equations for REN upon which this class is built can be found in the following paper
         "Revay M et al. Recurrent equilibrium networks: Flexible dynamic models with guaranteed
@@ -37,9 +34,6 @@ class REN(nn.Module):
             l (int): Complexity of the implicit layer.
             initialization_std (float, optional): Weight initialization. Set to 0.1 by default.
             xi_init (torch.Tensor, optional): Initial condition for the internal state. Defaults to None.
-            bypass_output (bool, optional): If set True, internal state is directly connected to output.
-                Useful when the cost is defined over internal state trajectories, e.g., for imitation
-                learning. Defaults to False.
 
             linear_output (bool, optional): If set True, the output matrices are arranged in a way so that
                 the output is a linear transformation of the input. Defaults to False.
@@ -57,12 +51,11 @@ class REN(nn.Module):
         self.l = l
 
         # set functionalities
-        self.bypass_output = bypass_output
         self.linear_output = linear_output
         self.contraction_rate_lb = contraction_rate_lb
 
         # initialize internal state
-        self.x = x_init if x_init is not None else torch.zeros(1, 1, self.dim_x, device=device)
+        self.x = torch.zeros(1, 1, self.dim_x, device=device)
 
         # auxiliary matrices
         self.X_shape = (2 * self.dim_x + self.l, 2 * self.dim_x + self.l)
@@ -108,12 +101,33 @@ class REN(nn.Module):
         self.update_model_param()
 
     def set_x_init(self, x_init):
+        """ Set the initial condition of x.
+
+        Args:
+            x_init (torch.Tensor): Initial value for x.
+        """
 
         # fix the initial condition of the internal state
         self.x = x_init
 
-    def update_model_param(self):
+    def set_y_init(self, y_init):
+        """ Set x_init that results in a given y_init, when
+        output is a linear transformation of the state (x),
+        y_t = C_2 x_t.
 
+        If dim_x > dim_out, infinitely many solutions might exist.
+        in this case, the min norm solution is returned.
+
+        Args:
+            x_init (torch.Tensor): Initial value for x.
+        """
+
+        x_init = torch.linalg.lstsq(self.C2,  y_init.squeeze(1).T)[0].view(1, 1, self.dim_x)
+        self.set_x_init(x_init)
+
+    def update_model_param(self):
+        """ Update non-trainable matrices according to the REN formulation to preserve contraction.
+        """
         # dependent params
         H = torch.matmul(self.X.T, self.X) + self.epsilon * torch.eye(2 * self.dim_x + self.l, device=device)
         h1, h2, h3 = torch.split(H, [self.dim_x, self.l, self.dim_x], dim=0)
@@ -164,19 +178,21 @@ class REN(nn.Module):
         # TODO: this is kind of a diffeomorphism? replace with a bijection layer of normalizing flow?
         return y_out
 
-    def forward_trajectory(self, u_in: torch.Tensor, x_init: torch.Tensor, horizon: int = 20):
+    def forward_trajectory(self, u_in: torch.Tensor, y_init: torch.Tensor, horizon: int = 20):
         """ Get a trajectory of forward passes.
+
+        First element can be either y_init, as used here, or y_1. Depends on the application.
 
         Args:
             u_in (torch.Tensor): Input at each time step. Must be fixed for autonomous systems.
-            x_init (torch.Tensor): Initial condition of the internal state.
+            y_init (torch.Tensor): Initial condition of the output.
             horizon (int, optional): Length of the forward trajectory. Defaults to 20.
         """
 
-        self.set_x_init(x_init)
+        self.set_y_init(y_init)
 
-        outs = []
-        for _ in range(horizon):
+        outs = [y_init]
+        for _ in range(horizon - 1):
             out = self.forward(u_in)
             outs.append(out)
 
