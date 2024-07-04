@@ -58,8 +58,8 @@ def polynomial_expert(horizon, device, start_point=1.0, coefficients=[16, -16, 0
     return ref
 
 
-def lasa_expert(motion_shape: str, horizon: int, device: str, noise_ratio: float = 0.001,
-                batch_size: int = 64, state_only: bool = True):
+def lasa_expert(motion_shape: str, horizon: int, device: str, noise_ratio: float = 0.0001,
+                batch_size: int = 64, state_only: bool = True, n_dems: int = 7):
     """ Dataset form the LASA handwriting dataset. This dataset is a good starting point
     but the state dimension is often 2 or 4.
 
@@ -75,6 +75,10 @@ def lasa_expert(motion_shape: str, horizon: int, device: str, noise_ratio: float
             imitation in a fixed horizon.
 
         device (str): Computational device, cuda:i or cpu.
+        noise_ratio (float, optional): Noise ratio in the initial distribution condition. Defaults to 0.001.
+        batch_size (int, optional): Batch size in case of state action dataset. Defaults to 64.
+        state_only (bool, optional): Return state only trajectories, without velocities.
+        n_dems (int, optional): Number of expert demonstrations in the LASA dataset.
 
     Returns:
         torch.utils.data.DataLoader: Dataloader object ready for training
@@ -83,50 +87,36 @@ def lasa_expert(motion_shape: str, horizon: int, device: str, noise_ratio: float
     # silence command-line output temporarily
     import pyLasaDataset as lasa
 
-    # load motion data
+    # load motion data and normalize
     motion_data = getattr(lasa.DataSet, motion_shape).demos
-    pos = np.array(motion_data[0].pos.T)
-    vel = np.array(motion_data[0].vel.T)
-
-    # normalize
-    pos = normalize(pos.T).T
+    positions = [normalize(torch.Tensor(motion_data[idx].pos.T).T).T for idx in range(n_dems)]
+    velocities = [torch.Tensor(motion_data[idx].vel.T) for idx in range(n_dems)] # TODO: normalize velocity?
 
     # load motion data into tensors
-    y_train = torch.from_numpy(vel.astype(np.float32))
-    x_train = torch.from_numpy(pos.astype(np.float32))
-    x_train = x_train.view(x_train.shape[0], 1, x_train.shape[1])
+    x_train = torch.stack(positions, dim=0)
+    y_train = torch.stack(velocities, dim=0)
 
+    # send data to device
     x_train = x_train.to(device)
     y_train = y_train.to(device)
 
     # down sample the original dataset
-    downscale_rate = horizon / x_train.shape[0]
-
-    # samples and sub-samples
-    num_samples = x_train.size(0)
-    num_subsample = int(num_samples * downscale_rate)
+    num_samples = x_train.size(1)
+    num_subsample = horizon
 
     # Create a range of indices to select elements at regular intervals
     step = num_samples // num_subsample
     indices = torch.arange(0, num_samples, step)[:num_subsample]
 
-    x_train_ds = torch.from_numpy(pos.astype(np.float32)[indices])
-    x_train_ds = x_train_ds.view(x_train_ds.shape[0], 1, x_train_ds.shape[1])
+    x_train_ds = torch.from_numpy(x_train.cpu().numpy()[:, indices, :])
+    x_train_ds = x_train_ds.to(device)
 
     # dataset of initial conditions
-    base_value = x_train_ds[0]
-
-    # generate random noise
-    noise = torch.randn(x_train_ds.shape) * noise_ratio
-    noise.requires_grad = True
-
-    # create the vector with the first element of x_train plus noise,
-    # this is like sampling from an initial condition distribution
-    noisy_x_ic = noise + base_value
+    base_values = x_train_ds[:, 0,:]
 
     # state only data (y_train (velocities) not used)
     if state_only:
-        dataset_state_only = TensorDataset(noisy_x_ic, x_train_ds)
+        dataset_state_only = TensorDataset(base_values, x_train_ds)
         dataloader = DataLoader(dataset_state_only, batch_size=x_train_ds.shape[0],
                                 shuffle=False) # TODO: Fix the batch size
 
@@ -138,17 +128,17 @@ def lasa_expert(motion_shape: str, horizon: int, device: str, noise_ratio: float
     return x_train_ds, dataloader
 
 
-def normalize(arr: np.ndarray):
+def normalize(arr: torch.Tensor):
     """ Normalization of data in the form of array. Each row is first
     summed and elements are then divided by the sum.
 
     Args:
-        arr (np.ndarray): The input array to be normalized in the shape of (n_dim, n_samples).
+        arr (torch.Tensor): The input array to be normalized in the shape of (n_dim, n_samples).
 
     Returns:
-        np.ndarray: The normalized array.
+        torch.Tensor: The normalized array.
     """
 
     assert arr.shape[0] < arr.shape[1]
-    max_magnitude = np.max(np.linalg.norm(arr, axis=0))
+    max_magnitude = torch.max(torch.norm(arr, dim=0))
     return arr / max_magnitude

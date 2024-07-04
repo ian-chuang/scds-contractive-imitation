@@ -2,12 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-device = "cpu" #"cuda:0" if torch.cuda.is_available() else "cpu"
 
 class REN(nn.Module):
-    def __init__(self, dim_in: int, dim_out: int, dim_x: int,
-                 l: int, initialization_std: float = 0.5, linear_output: bool = False,
-                 posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0):
+    def __init__(self, dim_in: int, dim_out: int, dim_x: int, l_hidden: int,
+                 batch_size: int = 1, initialization_std: float = 0.5, linear_output: bool = False,
+                 posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0, device: str = "cpu"):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
 
@@ -48,17 +47,19 @@ class REN(nn.Module):
         self.dim_in = dim_in
         self.dim_x = dim_x
         self.dim_out = dim_out
-        self.l = l
+        self.l_hidden = l_hidden
+        self.batch_size = batch_size
+        self.device = device
 
         # set functionalities
         self.linear_output = linear_output
         self.contraction_rate_lb = contraction_rate_lb
 
         # initialize internal state
-        self.x = torch.zeros(1, 1, self.dim_x, device=device)
+        self.x = torch.zeros(self.batch_size, 1, self.dim_x, device=self.device)
 
         # auxiliary matrices
-        self.X_shape = (2 * self.dim_x + self.l, 2 * self.dim_x + self.l)
+        self.X_shape = (2 * self.dim_x + self.l_hidden, 2 * self.dim_x + self.l_hidden)
         self.Y_shape = (self.dim_x, self.dim_x)
 
         # nn state dynamics
@@ -66,36 +67,36 @@ class REN(nn.Module):
 
         # nn output
         self.C2_shape = (self.dim_out, self.dim_x)
-        self.D21_shape = (self.dim_out, self.l)
+        self.D21_shape = (self.dim_out, self.l_hidden)
         self.D22_shape = (self.dim_out, self.dim_in)
 
         # v signal
-        self.D12_shape = (self.l, self.dim_in)
+        self.D12_shape = (self.l_hidden, self.dim_in)
 
         # define training nn params TODO: Replace this with straightforward definition
         self.training_param_names = ['X', 'Y', 'B2', 'C2', 'D21', 'D22', 'D12']
         if self.linear_output:
             # set D21 to zero
             self.training_param_names.remove('D21') # not trainable anymore
-            self.D21 = torch.zeros(*self.D21_shape, device=device) * initialization_std
+            self.D21 = torch.zeros(*self.D21_shape, device=self.device) * initialization_std
             # set D22 to zero
-            self.D22 = torch.zeros(*self.D22_shape, device=device) * initialization_std
+            self.D22 = torch.zeros(*self.D22_shape, device=self.device) * initialization_std
             self.training_param_names.remove('D22') # not trainable anymore
 
         for name in self.training_param_names:
             # read the defined shapes
             shape = getattr(self, name + '_shape')
             # define each param as nn.Parameter
-            setattr(self, name, nn.Parameter((torch.randn(*shape, device=device) * initialization_std)))
+            setattr(self, name, nn.Parameter((torch.randn(*shape, device=self.device) * initialization_std)))
 
         # auxiliary elements
         self.epsilon = posdef_tol
-        self.F = torch.zeros(dim_x, dim_x, device=device)
-        self.B1 = torch.zeros(dim_x, l, device=device)
-        self.E = torch.zeros(dim_x, dim_x, device=device)
-        self.Lambda = torch.ones(l, device=device)
-        self.C1 = torch.zeros(l, dim_x, device=device)
-        self.D11 = torch.zeros(l, l, device=device)
+        self.F = torch.zeros(dim_x, dim_x, device=self.device)
+        self.B1 = torch.zeros(dim_x, l_hidden, device=self.device)
+        self.E = torch.zeros(dim_x, dim_x, device=self.device)
+        self.Lambda = torch.ones(l_hidden, device=self.device)
+        self.C1 = torch.zeros(l_hidden, dim_x, device=self.device)
+        self.D11 = torch.zeros(l_hidden, l_hidden, device=self.device)
 
         # update non-trainable model params
         self.update_model_param()
@@ -122,18 +123,18 @@ class REN(nn.Module):
             x_init (torch.Tensor): Initial value for x.
         """
 
-        x_init = torch.linalg.lstsq(self.C2,  y_init.squeeze(1).T)[0].view(1, 1, self.dim_x)
+        x_init = torch.linalg.lstsq(self.C2,  y_init.squeeze(1).T)[0].T.unsqueeze(1)
         self.set_x_init(x_init)
 
     def update_model_param(self):
         """ Update non-trainable matrices according to the REN formulation to preserve contraction.
         """
         # dependent params
-        H = torch.matmul(self.X.T, self.X) + self.epsilon * torch.eye(2 * self.dim_x + self.l, device=device)
-        h1, h2, h3 = torch.split(H, [self.dim_x, self.l, self.dim_x], dim=0)
-        H11, H12, H13 = torch.split(h1, [self.dim_x, self.l, self.dim_x], dim=1)
-        H21, H22, _ = torch.split(h2, [self.dim_x, self.l, self.dim_x], dim=1)
-        H31, H32, H33 = torch.split(h3, [self.dim_x, self.l, self.dim_x], dim=1)
+        H = torch.matmul(self.X.T, self.X) + self.epsilon * torch.eye(2 * self.dim_x + self.l_hidden, device=self.device)
+        h1, h2, h3 = torch.split(H, [self.dim_x, self.l_hidden, self.dim_x], dim=0)
+        H11, H12, H13 = torch.split(h1, [self.dim_x, self.l_hidden, self.dim_x], dim=1)
+        H21, H22, _ = torch.split(h2, [self.dim_x, self.l_hidden, self.dim_x], dim=1)
+        H31, H32, H33 = torch.split(h3, [self.dim_x, self.l_hidden, self.dim_x], dim=1)
         P = H33
 
         # nn state dynamics
@@ -142,7 +143,7 @@ class REN(nn.Module):
 
         # nn output
         self.E = 0.5 * (H11 + self.contraction_rate_lb * P + self.Y - self.Y.T)
-        self.eye = torch.eye(self.l, device=device)
+        self.eye = torch.eye(self.l_hidden, device=self.device)
 
         # v signal
         # NOTE: change the following lines when you don't want a strictly acyclic REN!
@@ -159,15 +160,14 @@ class REN(nn.Module):
         Return:
             y_out (torch.Tensor): Output with (batch_size, 1, self.dim_out).
         """
-        batch_size = u_in.shape[0]
 
-        w = torch.zeros(batch_size, 1, self.l, device=device)
+        w = torch.zeros(self.batch_size, 1, self.l_hidden, device=self.device)
 
         # update each row of w using Eq. (8) with a lower triangular D11
-        for i in range(self.l):
+        for i in range(self.l_hidden):
             #  v is element i of v with dim (batch_size, 1)
             v = F.linear(self.x, self.C1[i, :]) + F.linear(w, self.D11[i, :]) + F.linear(u_in, self.D12[i,:])
-            w = w + (self.eye[i, :] * torch.tanh(v / self.Lambda[i])).reshape(batch_size, 1, self.l)
+            w = w + (self.eye[i, :] * torch.tanh(v / self.Lambda[i])).reshape(self.batch_size, 1, self.l_hidden)
 
         # compute next state using Eq. 18
         self.x = F.linear(
@@ -196,5 +196,5 @@ class REN(nn.Module):
             out = self.forward(u_in)
             outs.append(out)
 
-        stacked_outs = torch.cat(outs, dim=0)
+        stacked_outs = torch.cat(outs, dim=1)
         return stacked_outs
