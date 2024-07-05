@@ -12,7 +12,7 @@ def argument_parser():
     parser.add_argument('--dim-x', type=int, default=8, help='Dimension x. Default is 8.')
     parser.add_argument('--dim-in', type=int, default=2, help='Dimension u, or exogenous input. Default is 2.')
     parser.add_argument('--dim-out', type=int, default=2, help='Dimension y, or output. Default is 2.')
-    parser.add_argument('--l-hidden', type=int, default=8, help='Hidden layer size. Default is 8.')
+    parser.add_argument('--dim-v', type=int, default=8, help='Implicit equation size. Default is 8.')
     parser.add_argument('--batch-size', type=int, default=1, help='Number of forward trajectories of the network and expert trajectories at each step. Default is 1.')
 
     # training args

@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 
 from torch.utils.tensorboard import SummaryWriter
 
-from ren import REN
+from IL.ren_discrete import REN
 from datetime import datetime
-from utils import argument_parser
+from IL.cli import argument_parser
 
 from dataset import lasa_expert, polynomial_expert, linear_expert
 
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     ren_dim_x = args.dim_x
     ren_dim_in = args.dim_in
     ren_dim_out = args.dim_out
-    ren_l = args.l_hidden
+    ren_dim_v = args.dim_v
 
     total_epochs = args.total_epochs
     patience_epoch = (args.total_epochs // 5) if args.patience_epoch is None else args.patience_epoch
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     u_in = torch.zeros((batch_size, 1, 2), device=device)
 
     # define REN
-    ren_module = REN(dim_in=ren_dim_in, dim_out=ren_dim_out, dim_x=ren_dim_x, l_hidden=ren_l, initialization_std=0.1, linear_output=True,
+    ren_module = REN(dim_in=ren_dim_in, dim_out=ren_dim_out, dim_x=ren_dim_x, dim_v=ren_dim_v, initialization_std=0.1, linear_output=True,
                      contraction_rate_lb=1.0, batch_size=batch_size, device=device)
     ren_module.to(device=device)
 
@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
     # experiment log setup
     timestamp = datetime.now().strftime('%d-%H%M')
-    experiment_name = f'{expert}-{lasa_motion_shape}-h{ren_horizon}-x{ren_dim_x}-l{ren_l}-e{total_epochs}-t{timestamp}'
+    experiment_name = f'{expert}-{lasa_motion_shape}-h{ren_horizon}-x{ren_dim_x}-l{ren_dim_v}-e{total_epochs}-t{timestamp}'
     writer_dir = f'{experiment_dir}/ren-training-{experiment_name}'
     writer = SummaryWriter(writer_dir)
 
