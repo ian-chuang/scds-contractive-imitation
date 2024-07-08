@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class REN(nn.Module):
+class NODE_REN(nn.Module):
     def __init__(self, nx, ny, nu, nq, sigma, epsilon, device, bias = False, alpha = 0.0, linear_output=False):
         """Used by the upper class NODE_REN to guarantee contractivity to the model. It should not be used by itself.
         Args:

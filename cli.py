@@ -22,6 +22,7 @@ def argument_parser():
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate during training. Default is 0.01.')
     parser.add_argument('--lr-start-factor', type=float, default=1.0, help='Start factor of the linear learning rate scheduler. Default is 1.0.')
     parser.add_argument('--lr-end-factor', type=float, default=0.01, help='End factor of the linear learning rate scheduler. Default is 0.01.')
+    parser.add_argument('--ic-noise-rate', type=float, default=0.1, help='Applied noise to the initial condition for further robustness.')
 
     # dataset args
     parser.add_argument('--expert', type=str, default="lasa", help='Expert type. Default is "lasa".')
@@ -37,10 +38,10 @@ def argument_parser():
     if args.expert == "lasa":
         assert args.motion_shape is not None, "Motion shape must be passed if expert is set to lasa."
 
-    if args.total_epochs < 10000:
+    if args.total_epochs < 10000 and args.load_model is None:
         print(f'Minimum of 10000 epochs are required for proper training')
 
-    if args.horizon > 100:
+    if args.horizon > 100 and args.load_model is None:
         print(f'Long horizons may be unnecessary and pose significant computation')
 
     return args
