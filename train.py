@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
     # define REN
     ren_module = REN(dim_in=args.dim_in, dim_out=args.dim_out, dim_x=args.dim_x, dim_v=args.dim_v,
-                     initialization_std=0.1, linear_output=True, contraction_rate_lb=1.0,
+                     initialization_std=0.1, linear_output=True, add_bias=True, contraction_rate_lb=1.0,
                      batch_size=args.batch_size, device=args.device)
     ren_module.to(device=args.device)
 

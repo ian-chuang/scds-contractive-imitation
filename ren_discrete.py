@@ -21,8 +21,8 @@ class REN(nn.Module):
         The model is described as,
 
                         [  E . x_t+1 ]  =  [ F    B_1  B_2   ]   [  x_t ]   +   [  b_x ]
-                        [  Λ . v_t   ]  =  [ C_1  D_11  D_12 ]   [  w_t ]   +   [  b_w ]
-                        [  y_t       ]  =  [ C_2  D_21  D_22 ]   [  u_t ]   +   [  b_u ]
+                        [  Λ . v_t   ]  =  [ C_1  D_11  D_12 ]   [  w_t ]   +   [  b_v ]
+                        [  y_t       ]  =  [ C_2  D_21  D_22 ]   [  u_t ]   +   [  b_y ]
 
         where E is an invertible matrix and Λ is a positive-definite diagonal matrix. The model parameters
         are then {E, Λ , F, B_i, C_i, D_ij, b} which form a convex set according to the paper.
@@ -92,14 +92,14 @@ class REN(nn.Module):
             # define each param as nn.Parameter
             setattr(self, name, nn.Parameter((torch.randn(*shape, device=self.device) * initialization_std)))
 
-        if(self.add_bias): # TODO: add biases for the model and try convergence time
-            self.bx= nn.Parameter(torch.randn(self.dim_x, 1, device=device) * initialization_std)
-            self.bv= nn.Parameter(torch.randn(self.dim_v, 1, device=device) * initialization_std)
-            self.by= nn.Parameter(torch.randn(self.dim_out, 1, device=device) * initialization_std)
+        if self.add_bias:
+            self.bx= nn.Parameter(torch.randn(1, self.dim_x, device=device) * initialization_std)
+            self.bv= nn.Parameter(torch.randn(1, self.dim_v, device=device) * initialization_std)
+            self.by= nn.Parameter(torch.randn(1, self.dim_out, device=device) * initialization_std)
         else:
-            self.bx= torch.zeros(self.dim_x, 1, device=device)
-            self.bv= torch.zeros(self.dim_v, 1, device=device)
-            self.by= torch.zeros(self.dim_out, 1, device=device)
+            self.bx= torch.zeros(1, self.dim_x, device=device)
+            self.bv= torch.zeros(1, self.dim_v, device=device)
+            self.by= torch.zeros(1, self.dim_out, device=device)
 
         # auxiliary elements
         self.epsilon = posdef_tol
@@ -179,12 +179,11 @@ class REN(nn.Module):
         for i in range(self.dim_v):
             #  v is element i of v with dim (batch_size, 1)
             v = F.linear(self.x, self.C1[i, :]) + F.linear(w, self.D11[i, :]) + F.linear(u_in, self.D12[i,:])
+            print(v.shape)
             w = w + (self.eye[i, :] * self.act(v / self.Lambda[i])).reshape(self.batch_size, 1, self.dim_v)
 
         # compute next state using Eq. 18
-        self.x = F.linear(
-            F.linear(self.x, self.F) + F.linear(w, self.B1) + F.linear(u_in, self.B2),
-            self.E.inverse())
+        self.x = F.linear(F.linear(self.x, self.F) + F.linear(w, self.B1) + F.linear(u_in, self.B2), self.E.inverse())
 
         y_out = F.linear(self.x, self.C2) + F.linear(w, self.D21) + F.linear(u_in, self.D22)
         # TODO: this is kind of a diffeomorphism? replace with a bijection layer of normalizing flow?
