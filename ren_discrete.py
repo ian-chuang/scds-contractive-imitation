@@ -1,17 +1,19 @@
+"""
+    Code is modified from the original version by Galimberti et. al.
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-class REN(nn.Module):
+class DREN(nn.Module):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
-                 batch_size: int = 1, initialization_std: float = 0.5, linear_output: bool = False,
+                 batch_size: int = 1, weight_init_std: float = 0.5, linear_output: bool = False,
                  posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0, add_bias: bool = False,
-                 device: str = "cpu"):
+                 device: str = "cpu", horizon: int = None):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
-
-        # IMPORTANT TODO: Fix all the parameters and fixed tensors and their device!!!!!!
 
         NOTE: The equations for REN upon which this class is built can be found in the following paper
         "Revay M et al. Recurrent equilibrium networks: Flexible dynamic models with guaranteed
@@ -30,17 +32,19 @@ class REN(nn.Module):
         Args:
             dim_in (int): Input dimension. The input is the u vector defined in the paper.
             dim_out (int): Output dimension.
-            dim_xi (int): Internal state dimension. This state evolves with contraction properties.
-            l (int): Complexity of the implicit layer.
-            initialization_std (float, optional): Weight initialization. Set to 0.1 by default.
-            xi_init (torch.Tensor, optional): Initial condition for the internal state. Defaults to None.
+            dim_x (int): Internal state dimension. This state evolves with contraction properties.
+            dim_v (int): Complexity of the implicit layer.
+
+            batch_size(int, optional): Parallel batch size for efficient computing. Defaults to 1.
+            weight_init_std (float, optional): Weight initialization. Set to 0.1 by default.
 
             linear_output (bool, optional): If set True, the output matrices are arranged in a way so that
                 the output is a linear transformation of the input. Defaults to False.
+            add_bias (bool, optional): If set True, the trainable b_xvy biases are added. Defaults to False.
 
-            epsilon (float, optional): Positive and negligible scalar to force positive definite matrices.
+            posdef_tol (float, optional): Positive and negligible scalar to force positive definite matrices.
             contraction_rate_lb (float, optional): Lower bound on the contraction rate. Defaults to 1.
-
+            device(str, optional): Pass the name of the device. Defaults to cpu.
         """
         super().__init__()
 
@@ -50,6 +54,7 @@ class REN(nn.Module):
         self.dim_out = dim_out
         self.dim_v = dim_v
         self.batch_size = batch_size
+        self.horizon = horizon
         self.device = device
 
         # set functionalities
@@ -77,29 +82,30 @@ class REN(nn.Module):
         self.D12_shape = (self.dim_v, self.dim_in)
 
         # define training nn params TODO: Replace this with straightforward definition
+        self.weight_init_std = weight_init_std
         self.training_param_names = ['X', 'Y', 'B2', 'C2', 'D21', 'D22', 'D12']
         if self.linear_output:
             # set D21 to zero
             self.training_param_names.remove('D21') # not trainable anymore
-            self.D21 = torch.zeros(*self.D21_shape, device=self.device) * initialization_std
+            self.D21 = torch.zeros(*self.D21_shape, device=self.device) * self.weight_init_std
             # set D22 to zero
-            self.D22 = torch.zeros(*self.D22_shape, device=self.device) * initialization_std
+            self.D22 = torch.zeros(*self.D22_shape, device=self.device) * self.weight_init_std
             self.training_param_names.remove('D22') # not trainable anymore
 
         for name in self.training_param_names:
             # read the defined shapes
             shape = getattr(self, name + '_shape')
             # define each param as nn.Parameter
-            setattr(self, name, nn.Parameter((torch.randn(*shape, device=self.device) * initialization_std)))
+            setattr(self, name, nn.Parameter((torch.randn(*shape, device=self.device) * self.weight_init_std)))
 
         if self.add_bias:
-            self.bx= nn.Parameter(torch.randn(1, self.dim_x, device=device) * initialization_std)
-            self.bv= nn.Parameter(torch.randn(1, self.dim_v, device=device) * initialization_std)
-            self.by= nn.Parameter(torch.randn(1, self.dim_out, device=device) * initialization_std)
+            self.bx = nn.Parameter(torch.randn(1, self.dim_x, device=device) * self.weight_init_std)
+            self.bv = nn.Parameter(torch.randn(1, self.dim_v, device=device) * self.weight_init_std)
+            self.by = nn.Parameter(torch.randn(1, self.dim_out, device=device) * self.weight_init_std)
         else:
-            self.bx= torch.zeros(1, self.dim_x, device=device)
-            self.bv= torch.zeros(1, self.dim_v, device=device)
-            self.by= torch.zeros(1, self.dim_out, device=device)
+            self.bx = torch.zeros(1, self.dim_x, device=device)
+            self.bv = torch.zeros(1, self.dim_v, device=device)
+            self.by = torch.zeros(1, self.dim_out, device=device)
 
         # auxiliary elements
         self.epsilon = posdef_tol
@@ -166,6 +172,8 @@ class REN(nn.Module):
     def forward(self, u_in):
         """ Forward pass of REN.
 
+        # TODO: What is happening with x? Shouldn't it be passed at each stage? CHECK THIS
+
         Args:
             u_in (torch.Tensor): Input with the size of (batch_size, 1, self.dim_in).
 
@@ -179,17 +187,17 @@ class REN(nn.Module):
         for i in range(self.dim_v):
             #  v is element i of v with dim (batch_size, 1)
             v = F.linear(self.x, self.C1[i, :]) + F.linear(w, self.D11[i, :]) + F.linear(u_in, self.D12[i,:])
-            print(v.shape)
             w = w + (self.eye[i, :] * self.act(v / self.Lambda[i])).reshape(self.batch_size, 1, self.dim_v)
 
         # compute next state using Eq. 18
-        self.x = F.linear(F.linear(self.x, self.F) + F.linear(w, self.B1) + F.linear(u_in, self.B2), self.E.inverse())
+        self.x = F.linear(F.linear(self.x, self.F) + F.linear(w, self.B1) + F.linear(u_in, self.B2),
+                          self.E.inverse())
 
         y_out = F.linear(self.x, self.C2) + F.linear(w, self.D21) + F.linear(u_in, self.D22)
         # TODO: this is kind of a diffeomorphism? replace with a bijection layer of normalizing flow?
         return y_out
 
-    def forward_trajectory(self, u_in: torch.Tensor, y_init: torch.Tensor, horizon: int = 20):
+    def forward_trajectory(self, u_in: torch.Tensor, y_init: torch.Tensor, horizon: int):
         """ Get a trajectory of forward passes.
 
         First element can be either y_init, as used here, or y_1. Depends on the application.
@@ -201,6 +209,7 @@ class REN(nn.Module):
         """
 
         self.set_y_init(y_init)
+        self.horizon = horizon
 
         outs = [y_init]
         for _ in range(horizon - 1):
@@ -209,3 +218,17 @@ class REN(nn.Module):
 
         stacked_outs = torch.cat(outs, dim=1)
         return stacked_outs
+
+    def get_init_params(self):
+        return {
+            "dim_in": self.dim_in,
+            "dim_out": self.dim_out,
+            "dim_x": self.dim_x,
+            "dim_v": self.dim_v,
+            "batch_size": self.batch_size,
+            "weight_init_std": self.weight_init_std,
+            "linear_output": self.linear_output,
+            "contraction_rate_lb": self.contraction_rate_lb,
+            "add_bias": self.add_bias,
+            "horizon": self.horizon
+        }

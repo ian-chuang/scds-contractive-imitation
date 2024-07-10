@@ -7,7 +7,8 @@ def argument_parser():
     parser = argparse.ArgumentParser(description="Training ren for learning contractive motion through imitation.")
 
     # model args
-    parser.add_argument('--device', type=str, default="cuda:0" if torch.cuda.is_available() else "cpu", help='Device to run the computations on, "cpu" or "cuda:0". Default is "cuda:0" if available, otherwise "cpu".')
+    parser.add_argument('--model-type', type=str, default=None, help='Choose a model between "continuous" and "discrete" for the underlying REN.')
+    parser.add_argument('--device', type=str, default="cpu" if torch.cuda.is_available() else "cpu", help='Device to run the computations on, "cpu" or "cuda:0". Default is "cuda:0" if available, otherwise "cpu".')
     parser.add_argument('--horizon', type=int, default=10, help='Horizon value for the computation. Default is 10.')
     parser.add_argument('--dim-x', type=int, default=8, help='Dimension x. Default is 8.')
     parser.add_argument('--dim-in', type=int, default=2, help='Dimension u, or exogenous input. Default is 2.')
@@ -23,6 +24,10 @@ def argument_parser():
     parser.add_argument('--lr-start-factor', type=float, default=1.0, help='Start factor of the linear learning rate scheduler. Default is 1.0.')
     parser.add_argument('--lr-end-factor', type=float, default=0.01, help='End factor of the linear learning rate scheduler. Default is 0.01.')
     parser.add_argument('--ic-noise-rate', type=float, default=0.1, help='Applied noise to the initial condition for further robustness.')
+
+    # test args
+    parser.add_argument('--num-test-rollouts', type=int, default=50, help='Number of test rollouts for plots.')
+    parser.add_argument('--ic-test-std', type=float, default=0.3, help='Initial condition std during test and plotting phase.')
 
     # dataset args
     parser.add_argument('--expert', type=str, default="lasa", help='Expert type. Default is "lasa".')
