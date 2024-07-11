@@ -201,6 +201,9 @@ class CREN(nn.Module):
         """
 
         self.set_y_init(y_init)
+
+        # discrete horizon
+        self.horizon = horizon
         time_vector = torch.linspace(0.0, 1.0, horizon, device=self.device)
 
         x_sim = odeint(self, self.x, time_vector, method='dopri5', rtol=1e-4, atol=1e-4,

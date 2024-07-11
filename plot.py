@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 from os import PathLike
 from typing import List, Union
 
+from tqdm import tqdm
+
+from ren import REN
+
 
 class PlotConfigs:
     """Hardcoded plot configurations.
@@ -30,8 +34,11 @@ class PlotConfigs:
 
 
 def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray, save_dir: PathLike, plot_name: str,
-                      space_stretch = 0.5):
+                      space_stretch = 0.5, is_3d: bool = False):
     """ Plot the rollout and reference trajectories.
+
+    # TODO: Use REN to generate data here instead
+    # TODO: Animate maybe?
 
     Args:
         trajectories (List[np.ndarray]): Rollouts.
@@ -61,16 +68,77 @@ def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray, save_di
     plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE, dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
 
 
-def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
-                save_dir: str, plot_name: str, space_stretch: float = 0.3,
-                stream_density: float = 1.0, policy_density: int = 50,
-                traj_density: int = 0.4, horizon: int = 1000):
+def plot_trajectories_time(ren: REN, reference: np.ndarray, horizon: int, save_dir: PathLike, plot_name: str,
+                           space_stretch = 0.5, density: int = 10, is_3d: bool = False):
+    """ Plot the rollout and reference trajectories.
 
+    Args:
+        ren (REN): The ren module to generate trajectories.
+        trajectories (List[np.ndarray]): Rollouts.
+        references (List[np.ndarray]): Reference.
+        save_dir (PathLike): Save directory.
+        plot_name (str): Name of the plot file.
+    """
+
+    # TODO: idea for 3d
+    # fig = plt.figure(figsize=(8, 8))
+    # ax = fig.add_subplot(111, projection='3d')
+    # for i in range(trajectories.shape[1]):
+    #     ax.plot(trajectories[:, i, 0], trajectories[:, i, 1], time_span,
+    #             color=class_colors[i], alpha=0.1)
+
+    # ax.set_title('3D Trajectories')
+    # ax.set_xlabel(r"$\mathbf{z}_0(t)$")
+    # ax.set_ylabel(r"$\mathbf{z}_1(t)$")
+    # ax.set_zlabel(r"$t$")
+
+    x_min, x_max, y_min, y_max = find_limits(reference[0, :, :])
+
+    # calibrate the axis
+    fig = plt.figure(figsize=PlotConfigs.FIGURE_SIZE, dpi=PlotConfigs.FIGURE_DPI)
+
+    # generate the grid data
+    x = np.linspace(x_min - space_stretch, x_max + space_stretch, density)
+    y = np.linspace(y_min - space_stretch, y_max + space_stretch, density)
+    X, Y = np.meshgrid(x, y)
+
+    data = np.concatenate([X.reshape(-1,1), Y.reshape(-1,1)], axis=1)
+    data = np.expand_dims(data, axis=0)
+
+    trajectories = []
+    u_in = torch.zeros(1, 1, 2, device="cpu") # TODO: REPLACE
+
+    for d in tqdm(range(data.shape[1]), desc="Generating plot trajectories"):
+        data_point = np.expand_dims(data[:, d, :], axis=0)
+        traj = ren.forward_trajectory(u_in, torch.Tensor(data_point), horizon).detach().cpu().numpy()
+        trajectories.append(traj)
+
+    trajectories = np.concatenate(trajectories, 0)
+
+    ax0 = fig.add_subplot(121)
+    ax1 = fig.add_subplot(122)
+    time_span = np.linspace(0.0, 1.0, horizon)
+
+    for i in range(trajectories.shape[0]):
+        ax0.plot(time_span, trajectories[i, :, 0], alpha=0.5)
+        ax1.plot(time_span, trajectories[i, :, 1], alpha=0.5)
+
+    ax0.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
+    ax1.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
+
+    plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE, dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
+
+def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
+                save_dir: str, plot_name: str, space_stretch: float = 0.8,
+                grid_coordinates: np.ndarray = 1.0, grid_density: int = 3,
+                horizon: int = 100):
+
+    # TODO: change this to cover patches of state space instead of the entire state space
     # find trajectory limits
     x_min, x_max, y_min, y_max = find_limits(reference[0, :, :])
 
     # calibrate the axis
-    plt.figure(figsize=PlotConfigs.FIGURE_SIZE, dpi=PlotConfigs.FIGURE_DPI)
+    fig = plt.figure(figsize=PlotConfigs.FIGURE_SIZE, dpi=PlotConfigs.FIGURE_DPI)
 
     axes = plt.gca()
     axes.set_xlim([x_min - space_stretch, x_max + space_stretch])
@@ -79,59 +147,45 @@ def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
     plt.scatter(reference[:, :, 0], reference[:, :, 1], color=PlotConfigs.TRAJECTORY_COLOR, marker='o',
                 s=PlotConfigs.REFERENCE_SIZE, label='Expert Demonstrations')
 
-    for tr in rollouts:
-        plt.plot(tr[0, :, 0], tr[0, :, 1], linewidth=1, c=PlotConfigs.ROLLOUT_COLOR)
+    for i, tr in enumerate(rollouts):
+        plt.plot(tr[0, :, 0], tr[0, :, 1], linewidth=0.1, c=PlotConfigs.ROLLOUT_COLOR)
+        start_handle = plt.scatter(tr[0, 0, 0], tr[0, 0, 1], marker='x',
+                                   color=PlotConfigs.ANNOTATE_COLOR, linewidth=3, s=100,
+                                   label='Start')
 
     # generate the grid data
-    x = np.linspace(x_min - space_stretch, x_max + space_stretch, policy_density)
-    y = np.linspace(y_min - space_stretch, y_max + space_stretch, policy_density)
+    x = np.linspace(grid_coordinates[0][0], grid_coordinates[0][1], grid_density)
+    y = np.linspace(grid_coordinates[1][0], grid_coordinates[1][1], grid_density)
     X, Y = np.meshgrid(x, y)
 
-    step = 0.1 # np.linalg.norm(np.array([x_max - x_min + 2 * space_stretch, y_max - y_min + 2 * space_stretch]))
-    # print(f'Step: {step}')
-    # print(x_max, x_min, y_max, y_min, space_stretch)
-
     data = np.concatenate([X.reshape(-1,1), Y.reshape(-1,1)], axis=1)
-    def fun(x):
-        out = (ren.forward(torch.Tensor(x + step)) - ren.forward(torch.Tensor(x))).detach().cpu().numpy()
-        out = out.reshape(1, 2)
-        norm = np.linalg.norm(out, ord=2)
-        return out / norm
+    data = np.expand_dims(data, axis=0)
 
-    def fun_2(x):
-        out = (ren.forward(torch.Tensor(x + step)) - ren.forward(torch.Tensor(x))).detach().cpu().numpy()
-        print(out)
-        out = out.reshape(1, 2)
-        print(out)
-        norm = np.linalg.norm(out, ord=2)
-        return out / norm
+    trajectories = []
+    horizon = ren.horizon
+    u_in = torch.zeros(1, 1, 2, device="cpu")
 
-    Z = np.apply_along_axis(fun, 1, data)
-    print(Z.shape)
-    U, V = Z[:, :, 1].reshape(policy_density, policy_density), \
-           Z[:, :, 0].reshape(policy_density, policy_density)
+    for d in tqdm(range(data.shape[1]), desc="Generating plot rollouts"):
+        data_point = np.expand_dims(data[:, d, :], axis=0)
+        traj = ren.forward_trajectory(u_in, torch.Tensor(data_point), horizon).detach().cpu().numpy()
+        trajectories.append(traj)
 
-    # plot the vector field
-    plt.quiver(X[20, 20], Y[20, 20], U[20, 20], V[20, 20])
-    print(X[20, 20], Y[20, 20])
-    print(U[20, 20], V[20, 20])
-    print(fun_2(np.array([X[20, 20], Y[20, 20]])))
-    plt.quiver(X, Y, V, U) #density=stream_density, color=PlotConfigs.POLICY_COLOR, linewidth=1)
+    trajectories = np.concatenate(trajectories, 0)
 
-    # plot trajectory start and end
-    # start_handle = plt.scatter(start_points[:, 0], start_points[:, 1], marker='x',
-    #     color=PlotConfigs.ANNOTATE_COLOR, linewidth=3, s=120, label='Start')
-    # target_handle = plt.scatter(goal_point[0], goal_point[1], marker='*',
-    #     color=PlotConfigs.ANNOTATE_COLOR, linewidth=2, s=250, label='Target')
+    for i in range(trajectories.shape[0]):
+        start_handle = plt.scatter(trajectories[i, 0, 0], trajectories[i, 0, 1], marker='x',
+                                   color=PlotConfigs.ANNOTATE_COLOR, linewidth=3, s=100,
+                                   label='Start')
 
-    green_arrows = plt.Line2D([0], [0], color=PlotConfigs.POLICY_COLOR,
-                              linestyle='-', marker='>', label='Policy')
+        # plt.plot(trajectories[i, :, 0], trajectories[i, :, 1],  linewidth=0.1, c=PlotConfigs.ROLLOUT_COLOR)
+        plt.streamplot(trajectories[i, :, 0], trajectories[i, :, 1], np.diff(trajectories[i, :, 0]), np.diff(trajectories[i, :, 1]), color="black", linewidth=1)
+
     red_arrows = plt.Line2D([0], [0], color=PlotConfigs.ROLLOUT_COLOR,
                             linestyle='-', marker='>', label='Reproduced')
     blue_dots = plt.Line2D([0], [0], color=PlotConfigs.TRAJECTORY_COLOR,
                            marker='o', label='Expert Demonstrations')
 
-    plt.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
+    axes.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
 
     # add legend with the custom handle
     # plt.legend(fontsize=PlotConfigs.LEGEND_SIZE, loc='upper right',
@@ -187,3 +241,31 @@ def find_limits(trajectory):
 #     ax.set_xlabel(r"$x$")
 #     ax.set_ylabel(r"$y$")
 #     ax.set_title("Learned Vector Field")
+
+
+
+# def plot_trajectories_animation(time_span, trajectories, colors, classes, lim=10.0):
+#     def animate_frame(t):
+#         ax.cla()
+#         ax.set_xlim(-lim, lim)
+#         ax.set_ylim(-lim, lim)
+#         ax.set_title('Trajectories')
+#         ax.set_xlabel(r"$\mathbf{z}_0(t)$")
+#         ax.set_ylabel(r"$\mathbf{z}_1(t)$")
+
+#         zero_classes = np.array(classes) == 0
+#         one_classes = np.array(classes) == 1
+
+#         scatter_zero = ax.plot(
+#             trajectories[t, zero_classes, 0], trajectories[t, zero_classes, 1],
+#             'o', color=colors[0], alpha=0.2+0.8*t/len(time_span))
+#         scatter_one = ax.plot(
+#             trajectories[t, one_classes, 0], trajectories[t, one_classes, 1],
+#             'o', color=colors[1], alpha=0.2+0.8*t/len(time_span))
+#         return scatter_zero, scatter_one
+
+#     fig = plt.figure(figsize=(8, 8))
+#     ax = fig.add_subplot(111)
+#     anim = FuncAnimation(fig, animate_frame, frames=len(time_span))
+#     plt.close(fig)
+#     return anim
