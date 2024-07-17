@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     # plot the training trajectories
     if args.expert == "lasa":
-        expert_trajectory, dataloader = lasa_expert(args.motion_shape, 50, args.device, n_dems=1) # TODO: number of dems here needs to be fixed wrt batch size
+        expert_trajectory, dataloader = lasa_expert(args.motion_shape, experiment_data['model_params']['horizon'], args.device, n_dems=1) # TODO: number of dems here needs to be fixed wrt batch size
 
         # y_init is the first state in trajectory
         y_init = torch.Tensor(expert_trajectory[:, 0, :]).unsqueeze(1)
@@ -48,6 +48,7 @@ if __name__ == '__main__':
     # generate rollouts # TODO: add some parameters for num_rollouts and y_init_std
     policy_rollouts = []
     rollouts_horizon = experiment_data['model_params']['horizon']
+    rollouts_horizon = args.horizon if rollouts_horizon is None else rollouts_horizon
     num_rollouts = 100
     y_init_std = 0.05
 

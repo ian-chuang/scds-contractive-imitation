@@ -38,11 +38,11 @@ if __name__ == '__main__':
     # define REN model
     if args.model_type == 'continuous':
         model = CREN(dim_in=args.dim_in, dim_out=args.dim_out, dim_x=args.dim_x, dim_v=args.dim_v,
-                     batch_size=args.batch_size, device=args.device)
+                     batch_size=args.batch_size, device=args.device, horizon=args.horizon)
 
     elif args.model_type == 'discrete':
         model = DREN(dim_in=args.dim_in, dim_out=args.dim_out, dim_x=args.dim_x, dim_v=args.dim_v,
-                     batch_size=args.batch_size, device=args.device)
+                     batch_size=args.batch_size, device=args.device, horizon=args.horizon)
 
     else:
         raise(NotImplementedError('Please determine a correct model type: ["continuous", "discrete"]!'))
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     # experiment log setup
     timestamp = datetime.now().strftime('%d-%H%M')
     experiment_name = f'{type(model).__name__.lower()}-{args.expert}-{args.motion_shape}-h{args.horizon}' \
-                      f'-x{args.dim_x}-l{args.dim_v}-e{args.total_epochs}-b{args.batch_size}-t{timestamp}'
+                      f'-x{args.dim_x}-l{args.dim_v}-e{args.total_epochs}-b{args.batch_size}-n{args.ic_noise_rate}-t{timestamp}'
 
     writer_dir = f'{args.experiment_dir}/{experiment_name}'
     writer = SummaryWriter(writer_dir)

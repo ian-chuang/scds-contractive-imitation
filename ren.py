@@ -17,6 +17,9 @@ class REN(nn.Module, ABC):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
 
+        # TODO: Redundancy in horizon should be removed
+        # TODO: Use kwargs to reduce argument redundancy
+
         This is an abstract class for CREN and DREN modules. Please refer to the named modules for
         specific implementations.
 
