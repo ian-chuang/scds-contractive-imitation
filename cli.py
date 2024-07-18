@@ -9,11 +9,11 @@ def argument_parser():
     # model args
     parser.add_argument('--model-type', type=str, default=None, help='Choose a model between "continuous" and "discrete" for the underlying REN.')
     parser.add_argument('--device', type=str, default="cpu" if torch.cuda.is_available() else "cpu", help='Device to run the computations on, "cpu" or "cuda:0". Default is "cuda:0" if available, otherwise "cpu".')
-    parser.add_argument('--horizon', type=int, default=10, help='Horizon value for the computation. Default is 10.')
+    parser.add_argument('--horizon', type=int, default=50, help='Horizon value for the computation. Default is 50.')
     parser.add_argument('--dim-x', type=int, default=8, help='Dimension x. Default is 8.')
     parser.add_argument('--dim-in', type=int, default=2, help='Dimension u, or exogenous input. Default is 2.')
     parser.add_argument('--dim-out', type=int, default=2, help='Dimension y, or output. Default is 2.')
-    parser.add_argument('--dim-v', type=int, default=8, help='Implicit equation size. Default is 8.')
+    parser.add_argument('--dim-v', type=int, default=2, help='Implicit equation size. Default is 8.')
     parser.add_argument('--batch-size', type=int, default=1, help='Number of forward trajectories of the network and expert trajectories at each step. Default is 1.')
 
     # training args
@@ -23,7 +23,7 @@ def argument_parser():
     parser.add_argument('--lr', type=float, default=0.01, help='Learning rate during training. Default is 0.01.')
     parser.add_argument('--lr-start-factor', type=float, default=1.0, help='Start factor of the linear learning rate scheduler. Default is 1.0.')
     parser.add_argument('--lr-end-factor', type=float, default=0.01, help='End factor of the linear learning rate scheduler. Default is 0.01.')
-    parser.add_argument('--ic-noise-rate', type=float, default=0.1, help='Applied noise to the initial condition for further robustness.')
+    parser.add_argument('--ic-noise-rate', type=float, default=0.0, help='Applied noise to the initial condition for further robustness.')
 
     # test args
     parser.add_argument('--num-test-rollouts', type=int, default=50, help='Number of test rollouts for plots.')
@@ -45,6 +45,9 @@ def argument_parser():
 
     if args.total_epochs < 10000 and args.load_model is None:
         print(f'Minimum of 10000 epochs are required for proper training')
+
+    if args.dim_v > 2:
+        print(f'Complexities higher than 2 for dimension of the implicit layer (dim_v) are typically not necessary and cause serious computational overhead')
 
     if args.horizon > 100 and args.load_model is None:
         print(f'Long horizons may be unnecessary and pose significant computation')
