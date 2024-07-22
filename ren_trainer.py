@@ -18,6 +18,8 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, u_in: torch.Tensor,
                     device: str, batch_size: int):
     """ Train a discrete or continuous ren model.
 
+    # TODO: Train a scaling network at the same time to remember the magnitude of velocity.
+
     Args:
         model (CREN, DREN): The trainable model.
         lr (float): Learning rate for the optimizer.
@@ -33,7 +35,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, u_in: torch.Tensor,
         noise_ratio (float): Ratio of the noise on the output or internal state.
     """
 
-    print(f'Training { type(model).__name__} REN model for {total_epochs} epochs and {horizon} samples')
+    print(f'Training { type(model).__name__} model for {total_epochs} epochs and {horizon} samples')
 
     # optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)

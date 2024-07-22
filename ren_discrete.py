@@ -47,7 +47,7 @@ class DREN(REN):
             contraction_rate_lb (float, optional): Lower bound on the contraction rate. Defaults to 1.
             device(str, optional): Pass the name of the device. Defaults to cpu.
         """
-        super().__init__(dim_in, dim_out, dim_v, dim_x, batch_size, weight_init_std, linear_output, posdef_tol,
+        super().__init__(dim_in, dim_out, dim_x, dim_v, batch_size, weight_init_std, linear_output, posdef_tol,
                          contraction_rate_lb, add_bias, device, horizon)
 
         # auxiliary matrices

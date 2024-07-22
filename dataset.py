@@ -110,7 +110,6 @@ def lasa_expert(motion_shape: str, horizon: int, device: str, noise_ratio: float
 
     x_train_ds = torch.from_numpy(x_train.cpu().numpy()[:, indices, :])
     x_train_ds = x_train_ds.to(device)
-    print(x_train_ds.shape)
 
     # dataset of initial conditions
     base_values = x_train_ds[:, 0,:]
