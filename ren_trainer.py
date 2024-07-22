@@ -77,7 +77,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, u_in: torch.Tensor,
         train_losses.append(loss.item())
 
         # best model
-        if loss < best_loss:
+        if best_loss - loss > 5e-6:
             best_model_state_dict = copy.deepcopy(model.state_dict())
             best_loss = loss
             best_train_epoch = epoch
