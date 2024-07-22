@@ -1,7 +1,3 @@
-"""
-    Code is modified from the original version by Galimberti et. al.
-"""
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,7 +9,7 @@ class REN(nn.Module, ABC):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
                  batch_size: int = 1, weight_init_std: float = 0.5, linear_output: bool = False,
                  posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0, add_bias: bool = False,
-                 device: str = "cpu"):
+                 device: str = "cpu", horizon: int = None):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
 
@@ -48,7 +44,7 @@ class REN(nn.Module, ABC):
         self.dim_out = dim_out
         self.dim_v = dim_v
         self.batch_size = batch_size
-        self.horizon = None
+        self.horizon = horizon
         self.device = device
 
         # set functionalities
@@ -60,6 +56,16 @@ class REN(nn.Module, ABC):
         # std and tolerance
         self.weight_init_std = weight_init_std
         self.epsilon = posdef_tol
+
+        # bias
+        if self.add_bias:
+            self.bx = nn.Parameter(torch.randn(dim_x, 1, device=device) * self.weight_init_std)
+            self.bv = nn.Parameter(torch.randn(dim_v, 1, device=device) * self.weight_init_std)
+            self.by = nn.Parameter(torch.randn(dim_out, 1, device=device) * self.weight_init_std)
+        else:
+            self.bx = torch.zeros(dim_x, 1, device=device)
+            self.bv = torch.zeros(dim_v, 1, device=device)
+            self.by = torch.zeros(dim_out, 1, device=device)
 
         # initialize internal state
         self.x = torch.zeros(self.batch_size, 1, self.dim_x, device=self.device)

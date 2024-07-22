@@ -6,8 +6,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from ren import REN
 
-class DREN(nn.Module):
+class DREN(REN):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
                  batch_size: int = 1, weight_init_std: float = 0.5, linear_output: bool = False,
                  posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0, add_bias: bool = False,
@@ -46,25 +47,8 @@ class DREN(nn.Module):
             contraction_rate_lb (float, optional): Lower bound on the contraction rate. Defaults to 1.
             device(str, optional): Pass the name of the device. Defaults to cpu.
         """
-        super().__init__()
-
-        # set dimensions
-        self.dim_in = dim_in
-        self.dim_x = dim_x
-        self.dim_out = dim_out
-        self.dim_v = dim_v
-        self.batch_size = batch_size
-        self.horizon = horizon
-        self.device = device
-
-        # set functionalities
-        self.linear_output = linear_output
-        self.contraction_rate_lb = contraction_rate_lb
-        self.add_bias = add_bias
-        self.act = nn.Tanh()
-
-        # initialize internal state
-        self.x = torch.zeros(self.batch_size, 1, self.dim_x, device=self.device)
+        super().__init__(dim_in, dim_out, dim_v, dim_x, batch_size, weight_init_std, linear_output, posdef_tol,
+                         contraction_rate_lb, add_bias, device, horizon)
 
         # auxiliary matrices
         self.X_shape = (2 * self.dim_x + self.dim_v, 2 * self.dim_x + self.dim_v)
@@ -82,7 +66,6 @@ class DREN(nn.Module):
         self.D12_shape = (self.dim_v, self.dim_in)
 
         # define training nn params TODO: Replace this with straightforward definition
-        self.weight_init_std = weight_init_std
         self.training_param_names = ['X', 'Y', 'B2', 'C2', 'D21', 'D22', 'D12']
         if self.linear_output:
             # set D21 to zero
@@ -98,17 +81,7 @@ class DREN(nn.Module):
             # define each param as nn.Parameter
             setattr(self, name, nn.Parameter((torch.randn(*shape, device=self.device) * self.weight_init_std)))
 
-        if self.add_bias:
-            self.bx = nn.Parameter(torch.randn(1, self.dim_x, device=device) * self.weight_init_std)
-            self.bv = nn.Parameter(torch.randn(1, self.dim_v, device=device) * self.weight_init_std)
-            self.by = nn.Parameter(torch.randn(1, self.dim_out, device=device) * self.weight_init_std)
-        else:
-            self.bx = torch.zeros(1, self.dim_x, device=device)
-            self.bv = torch.zeros(1, self.dim_v, device=device)
-            self.by = torch.zeros(1, self.dim_out, device=device)
-
         # auxiliary elements
-        self.epsilon = posdef_tol
         self.F = torch.zeros(dim_x, dim_x, device=self.device)
         self.B1 = torch.zeros(dim_x, dim_v, device=self.device)
         self.E = torch.zeros(dim_x, dim_x, device=self.device)
@@ -118,31 +91,6 @@ class DREN(nn.Module):
 
         # update non-trainable model params
         self.update_model_param()
-
-    def set_x_init(self, x_init):
-        """ Set the initial condition of x.
-
-        Args:
-            x_init (torch.Tensor): Initial value for x.
-        """
-
-        # fix the initial condition of the internal state
-        self.x = x_init
-
-    def set_y_init(self, y_init):
-        """ Set x_init that results in a given y_init, when
-        output is a linear transformation of the state (x),
-        y_t = C_2 x_t.
-
-        If dim_x > dim_out, infinitely many solutions might exist.
-        in this case, the min norm solution is returned.
-
-        Args:
-            x_init (torch.Tensor): Initial value for x.
-        """
-
-        x_init = torch.linalg.lstsq(self.C2,  y_init.squeeze(1).T)[0].T.unsqueeze(1)
-        self.set_x_init(x_init)
 
     def update_model_param(self):
         """ Update non-trainable matrices according to the REN formulation to preserve contraction.
@@ -218,17 +166,3 @@ class DREN(nn.Module):
 
         stacked_outs = torch.cat(outs, dim=1)
         return stacked_outs
-
-    def get_init_params(self):
-        return {
-            "dim_in": self.dim_in,
-            "dim_out": self.dim_out,
-            "dim_x": self.dim_x,
-            "dim_v": self.dim_v,
-            "batch_size": self.batch_size,
-            "weight_init_std": self.weight_init_std,
-            "linear_output": self.linear_output,
-            "contraction_rate_lb": self.contraction_rate_lb,
-            "add_bias": self.add_bias,
-            "horizon": self.horizon
-        }

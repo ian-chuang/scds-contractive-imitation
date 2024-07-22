@@ -8,18 +8,16 @@ import torch.nn.functional as F
 
 from torchdiffeq import odeint_adjoint as odeint
 
+from ren import REN
 
-class CREN(nn.Module):
+
+class CREN(REN):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
                  batch_size: int = 1, posdef_tol: float = 5.0e-2, contraction_rate_lb: float = 0.0,
                  add_bias: bool = False, linear_output: bool = True, device: str = "cpu",
                  weight_init_std: float = 0.5, horizon: int = None):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
-
-        NOTE: The equations for REN upon which this class is built can be found in the following paper
-        "Revay M et al. Recurrent equilibrium networks: Flexible dynamic models with guaranteed
-        stability and robustness."
 
         Args:
             dim_in (int): Input dimension. The input is the u vector defined in the paper.
@@ -38,28 +36,10 @@ class CREN(nn.Module):
             contraction_rate_lb (float, optional): Lower bound on the contraction rate. Defaults to 0.
             device(str, optional): Pass the name of the device. Defaults to cpu.
         """
-        super().__init__()
-
-        # set dimensions
-        self.dim_in = dim_in
-        self.dim_x = dim_x
-        self.dim_out = dim_out
-        self.dim_v = dim_v
-        self.batch_size = batch_size
-        self.horizon = horizon
-        self.device = device
-
-        # set functionalities
-        self.linear_output = linear_output
-        self.contraction_rate_lb = contraction_rate_lb
-        self.add_bias = add_bias
-        self.act = nn.Tanh()
-
-        # initialize internal state
-        self.x = torch.zeros(self.batch_size, 1, self.dim_x, device=self.device)
+        super().__init__(dim_in, dim_out, dim_x, dim_v, batch_size, weight_init_std, linear_output, posdef_tol,
+                         contraction_rate_lb, add_bias, device, horizon)
 
         # auxiliary matrices
-        self.weight_init_std = weight_init_std
         self.Pstar = nn.Parameter(torch.randn(dim_x, dim_x, device=device) * self.weight_init_std)
         self.Chi = nn.Parameter(torch.randn(dim_x, dim_v, device=device) * self.weight_init_std)
         self.X = nn.Parameter(torch.randn(dim_x + dim_v, dim_x + dim_v, device=device) * self.weight_init_std)
@@ -76,18 +56,7 @@ class CREN(nn.Module):
 
         self.D22 = nn.Parameter(torch.randn(dim_out, dim_in, device=device) * self.weight_init_std)
 
-        if add_bias:
-            self.bx = nn.Parameter(torch.randn(dim_x, 1, device=device) * self.weight_init_std)
-            self.bv = nn.Parameter(torch.randn(dim_v, 1, device=device) * self.weight_init_std)
-            self.by = nn.Parameter(torch.randn(dim_out, 1, device=device) * self.weight_init_std)
-        else:
-            self.bx = torch.zeros(dim_x, 1, device=device)
-            self.bv = torch.zeros(dim_v, 1, device=device)
-            self.by = torch.zeros(dim_out, 1, device=device)
-
-
         # non-trainable matrices
-        self.epsilon = posdef_tol
         self.A = torch.zeros(dim_x, dim_x, device=device)
         self.D11 = torch.zeros(dim_v, dim_v, device=device)
         self.C1 = torch.zeros(dim_v, dim_x, device=device)
@@ -164,30 +133,6 @@ class CREN(nn.Module):
         yt = F.linear(xi, self.C2)
         return yt
 
-    def set_y_init(self, y_init):
-        """ Set x_init that results in a given y_init, when
-        output is a linear transformation of the state (x),
-        y_t = C_2 x_t.
-
-        If dim_x > dim_out, infinitely many solutions might exist.
-        in this case, the min norm solution is returned.
-
-        Args:
-            x_init (torch.Tensor): Initial value for x.
-        """
-
-        x_init = torch.linalg.lstsq(self.C2,  y_init.squeeze(1).T)[0].T.unsqueeze(1)
-        self.set_x_init(x_init)
-
-    def set_x_init(self, x_init):
-        """ Set the initial condition of x.
-
-        Args:
-            x_init (torch.Tensor): Initial value for x.
-        """
-
-        # fix the initial condition of the internal state
-        self.x = x_init
 
     def forward_trajectory(self, u_in: torch.Tensor, y_init: torch.Tensor, horizon: int):
         """ Get a trajectory of forward passes.
@@ -213,16 +158,4 @@ class CREN(nn.Module):
 
         return out
 
-    def get_init_params(self):
-        return {
-            "dim_in": self.dim_in,
-            "dim_out": self.dim_out,
-            "dim_x": self.dim_x,
-            "dim_v": self.dim_v,
-            "batch_size": self.batch_size,
-            "weight_init_std": self.weight_init_std,
-            "linear_output": self.linear_output,
-            "contraction_rate_lb": self.contraction_rate_lb,
-            "add_bias": self.add_bias,
-            "horizon": self.horizon
-        }
+
