@@ -49,7 +49,7 @@ if __name__ == '__main__':
         ren_module = model_type(**experiment_data['model']['model_params'], device=args.device)
         ren_module.load_state_dict(experiment_data['model']['model_state_dict'])
         ren_module.update_model_param()
-        print(f'Model loaded with \n params: {experiment_data["model"]["model_params"]} \n time: {experiment_data["model"]["training_time"]}')
+        print(f'Model loaded with \n params: {experiment_data["model"]["model_params"]} \n time: {experiment_data["model"]["training_time"]} \n loss: {experiment_data["model"]["best_loss"]}')
 
         # writer dir
         writer_dir = experiment_data['dir']
@@ -57,8 +57,17 @@ if __name__ == '__main__':
         rollouts_horizon = experiment_data['model']['model_params']['horizon']
 
         # plot the training trajectories
-        if args.expert == "lasa":
-            motion_type = experiment_data['name'].split('-')[2]
+        try: #TODO: temporary structure to for backward compatibility
+            expert = experiment_data['model']['expert']
+        except KeyError:
+            expert = args.expert
+
+        if expert == "lasa":
+            try: # TODO: temporary structure to for backward compatibility
+                motion_type = experiment_data['motion_shape']
+            except KeyError:
+                motion_type = experiment_data['name'].split('-')[2]
+
             expert_trajectory, dataloader = lasa_expert(motion_type, experiment_data['model']['model_params']['horizon'], args.device, n_dems=args.num_expert_trajectories)
 
             # y_init is the first state in trajectory

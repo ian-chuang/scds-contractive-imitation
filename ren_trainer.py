@@ -110,7 +110,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, u_in: torch.Tensor,
     print(f'Training Concluded in {training_time} | Best Loss: {best_loss:.8f} | Best Epoch: {best_train_epoch}')
 
     # save the best model
-    best_state = {
+    model_data = {
         'model_name': type(model).__name__,
         'model_state_dict': best_model_state_dict,
         'model_params': model.get_init_params(),
@@ -122,12 +122,8 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, u_in: torch.Tensor,
         'ic_noise_rate': ic_noise_rate
     }
 
-    # TODO: Do not save here! Save in train.py so you can have more info also about the dataset!!!
-    file = f'{writer.get_logdir()}/best_model.pth'
-    torch.save(best_state, file)
-
     # load the best model for plotting
     model.load_state_dict(best_model_state_dict)
     model.update_model_param()
 
-    return model
+    return model, model_data

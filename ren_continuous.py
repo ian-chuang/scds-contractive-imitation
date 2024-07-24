@@ -85,6 +85,7 @@ class CREN(REN):
         self.A = F.linear(torch.inverse(P), Y.T)
         self.D11 = -F.linear(torch.inverse(Lambda), torch.tril(H4, -1).T)
         self.C1 = F.linear(torch.inverse(Lambda), self.Chi)
+        self.eye = torch.eye(self.dim_v, device=self.device)
 
         Z = -H2 - self.Chi
         self.B1 = F.linear(torch.inverse(P), Z.T)
@@ -99,27 +100,15 @@ class CREN(REN):
         Returns:
             torch.Tensor: Time derivative of x.
         """
-        u = torch.zeros((1, 2), device=self.device) # TODO: Remove this IMMEDIATELY!
-        n_initial_states = x.shape[0]
+        u_in = torch.zeros((1, 2), device=self.device) # TODO: Remove this line and use the input argument
 
-        vec = torch.zeros(self.dim_v, 1, device=self.device)
-        vec[0, 0] = 1.0
+        w = torch.zeros(self.batch_size, 1, self.dim_v, device=self.device)
 
-        w = torch.zeros(n_initial_states, self.dim_v, device=self.device)
-        v = (F.linear(x, self.C1[0, :]) + self.bv[0] * torch.ones(n_initial_states, device=self.device) +
-             F.linear(u, self.D12[0, :])).unsqueeze(1)
-        w = w + F.linear(self.act(v), vec)
+        for i in range(self.dim_v):
+            v = F.linear(x, self.C1[i, :]) + F.linear(w, self.D11[i, :]) + F.linear(u_in, self.D12[i, :])
+            w = w + (self.eye[i, :] * self.act(v)).unsqueeze(1)
 
-        for i in range(1, self.dim_v):
-            vec = torch.zeros(self.dim_v, 1, device=self.device)
-            vec[i, 0] = 1.0
-            v = (F.linear(x, self.C1[i, :]) + F.linear(w, self.D11[i, :]) + self.bv[i] * torch.ones(n_initial_states, device=self.device) +
-                 F.linear(u, self.D12[i, :])).unsqueeze(1)
-            w = w + F.linear(self.act(v), vec)
-
-        x_dot = (F.linear(x, self.A) + F.linear(w, self.B1) +
-                 F.linear(torch.ones(n_initial_states, 1, device=self.device), self.bx) +
-                 F.linear(u, self.B2))
+        x_dot = (F.linear(x, self.A) + F.linear(w, self.B1) + F.linear(u_in, self.B2))
 
         return x_dot
 

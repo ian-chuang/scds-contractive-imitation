@@ -141,7 +141,7 @@ class DREN(REN):
         for i in range(self.dim_v):
             #  v is element i of v with dim (batch_size, 1)
             v = F.linear(self.x, self.C1[i, :]) + F.linear(w, self.D11[i, :]) + F.linear(u_in, self.D12[i,:])
-            w = w + (self.eye[i, :] * self.act(v / self.Lambda[i])).reshape(self.batch_size, 1, self.dim_v)
+            w = w + (self.eye[i, :] * self.act(v / self.Lambda[i])).unsqueeze(1)
 
         # compute next state using Eq. 18
         self.x = F.linear(F.linear(self.x, self.F) + F.linear(w, self.B1) + F.linear(u_in, self.B2),
