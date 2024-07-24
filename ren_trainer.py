@@ -56,8 +56,9 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, u_in: torch.Tensor,
     # time the operation
     start_time = datetime.now()
 
-    # repeat expert data # TODO: use the entire lasa dataset and therefore adjust the batch size
-    stacked_expert_trajectory = expert_trajectory.repeat(batch_size, 1, 1)
+    # repeat expert data according to the batch size
+    stacked_expert_trajectory = expert_trajectory.repeat(batch_size // expert_trajectory.shape[0], 1, 1)
+    stacked_y_init = y_init.repeat(batch_size // y_init.shape[0], 1, 1)
 
     # patience and log epochs
     patience_epoch = (total_epochs // 5) if patience_epoch is None else patience_epoch
@@ -70,7 +71,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, u_in: torch.Tensor,
 
         # forward pass
         # TODO: Then generate these random initial conditions as a part of dataloader
-        y_init_noisy = y_init + ic_noise_rate * (2 * (torch.rand(batch_size, y_init.shape[1], y_init.shape[2], device=device) - 0.5))
+        y_init_noisy = stacked_y_init + ic_noise_rate * (2 * (torch.rand(batch_size, y_init.shape[1], y_init.shape[2], device=device) - 0.5))
         out = model.forward_trajectory(u_in, y_init_noisy, horizon)
 
         # loss
@@ -121,7 +122,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, u_in: torch.Tensor,
         'ic_noise_rate': ic_noise_rate
     }
 
-
+    # TODO: Do not save here! Save in train.py so you can have more info also about the dataset!!!
     file = f'{writer.get_logdir()}/best_model.pth'
     torch.save(best_state, file)
 

@@ -9,7 +9,7 @@ class REN(nn.Module, ABC):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
                  batch_size: int = 1, weight_init_std: float = 0.5, linear_output: bool = False,
                  posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0, add_bias: bool = False,
-                 device: str = "cpu", horizon: int = None):
+                 device: str = "cpu", horizon: int = None, bijection: bool = False):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
 
@@ -51,6 +51,7 @@ class REN(nn.Module, ABC):
         self.linear_output = linear_output
         self.contraction_rate_lb = contraction_rate_lb
         self.add_bias = add_bias
+        self.bijection = bijection
         self.act = nn.Tanh()
 
         # std and tolerance

@@ -33,6 +33,29 @@ class PlotConfigs:
     ROLLOUT_LINEWIDTH = 0.1
 
 
+
+def find_limits(trajectory):
+    """ Find the trajectory limits.
+
+    Args:
+        trajectory (np.ndarray): The given trajectory for finding limitations. Can be 2 or
+            3 dimensions.
+
+    Raises:
+        NotSupportedError: Dimensions more than 3 are invalid.
+
+    Returns:
+        Tuple: A tuple of limits based on the dimensions (4 or 6 elements)
+    """
+
+    x_min = np.min(trajectory[:, :, 0])
+    y_min = np.min(trajectory[:, :, 1])
+    x_max = np.max(trajectory[:, :, 0])
+    y_max = np.max(trajectory[:, :, 1])
+
+    return x_min, x_max, y_min, y_max
+
+
 def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray, save_dir: PathLike, plot_name: str,
                       space_stretch = 0.5, is_3d: bool = False):
     """ Plot the rollout and reference trajectories.
@@ -48,7 +71,8 @@ def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray, save_di
     """
 
     # find trajectory limits
-    x_min, x_max, y_min, y_max = find_limits(reference[0, :, :])
+    x_min, x_max, y_min, y_max = find_limits(reference)
+    print(find_limits(reference))
 
     # calibrate the axis
     plt.figure(figsize=PlotConfigs.FIGURE_SIZE, dpi=PlotConfigs.FIGURE_DPI)
@@ -62,7 +86,8 @@ def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray, save_di
                 label='Expert Demonstrations')
 
     for tr in rollouts:
-        plt.plot(tr[0, :, 0], tr[0, :, 1], linewidth=PlotConfigs.ROLLOUT_LINEWIDTH, c=PlotConfigs.ROLLOUT_COLOR)
+        for batch_idx in range(tr.shape[0]):
+            plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_LINEWIDTH, c=PlotConfigs.ROLLOUT_COLOR)
 
     plt.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
     plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE, dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
@@ -193,27 +218,6 @@ def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
 
     plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE, dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
 
-
-def find_limits(trajectory):
-    """ Find the trajectory limits.
-
-    Args:
-        trajectory (np.ndarray): The given trajectory for finding limitations. Can be 2 or
-            3 dimensions.
-
-    Raises:
-        NotSupportedError: Dimensions more than 3 are invalid.
-
-    Returns:
-        Tuple: A tuple of limits based on the dimensions (4 or 6 elements)
-    """
-
-    x_min = np.min(trajectory[:, 0])
-    y_min = np.min(trajectory[:, 1])
-    x_max = np.max(trajectory[:, 0])
-    y_max = np.max(trajectory[:, 1])
-
-    return x_min, x_max, y_min, y_max
 
 
 # def plot_static_vector_field(model, trajectory, N=50, device='cpu', ax=None):

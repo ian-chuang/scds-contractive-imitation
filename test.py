@@ -27,13 +27,16 @@ if __name__ == '__main__':
             print(f'Loading the model:  {sub_exp_path}')
             model_dir = os.path.join(args.load_model, sub_exp_path)
             experiment_data_list.append({'model': torch.load(os.path.join(model_dir, 'best_model.pth')),
-                                         'dir': model_dir})
+                                         'dir': model_dir,
+                                         'name': sub_exp_path})
 
         print(f'Plotting results for {len(experiment_data_list)} experiments')
 
     else:
         # load the state dictionary
-        experiment_data_list = [torch.load(args.load_model)]
+        experiment_data_list = [{'model': torch.load(args.load_model),
+                                 'dir': os.path.dirname(args.load_model),
+                                 'name': os.path.basename(os.path.dirname(args.load_model))}]
         print(f'Plotting results for a single experiment')
 
     # plot operation for all experiments
@@ -43,17 +46,20 @@ if __name__ == '__main__':
         model_type = DREN if experiment_data['model']['model_name'] == "DREN" else CREN
 
         # build the ren module
-        ren_module = model_type(**experiment_data['model']['model_params'])
+        ren_module = model_type(**experiment_data['model']['model_params'], device=args.device)
         ren_module.load_state_dict(experiment_data['model']['model_state_dict'])
         ren_module.update_model_param()
         print(f'Model loaded with \n params: {experiment_data["model"]["model_params"]} \n time: {experiment_data["model"]["training_time"]}')
 
         # writer dir
         writer_dir = experiment_data['dir']
+        batch_size = experiment_data['model']['model_params']['batch_size']
+        rollouts_horizon = experiment_data['model']['model_params']['horizon']
 
         # plot the training trajectories
         if args.expert == "lasa":
-            expert_trajectory, dataloader = lasa_expert(args.motion_shape, experiment_data['model']['model_params']['horizon'], args.device, n_dems=1) # TODO: number of dems here needs to be fixed wrt batch size
+            motion_type = experiment_data['name'].split('-')[2]
+            expert_trajectory, dataloader = lasa_expert(motion_type, experiment_data['model']['model_params']['horizon'], args.device, n_dems=args.num_expert_trajectories)
 
             # y_init is the first state in trajectory
             y_init = torch.Tensor(expert_trajectory[:, 0, :]).unsqueeze(1)
@@ -62,21 +68,28 @@ if __name__ == '__main__':
             expert_trajectory = expert_trajectory.cpu().numpy()
 
             # input is set to zero
-            u_in = torch.zeros((experiment_data['model']['model_params']['batch_size'], 1, experiment_data['model']['model_params']['dim_in']), device=args.device)
+            u_in = torch.zeros((batch_size, 1, experiment_data['model']['model_params']['dim_in']), device=args.device)
 
-        # generate rollouts # TODO: add some parameters for num_rollouts and y_init_std
+        # test parameters
         policy_rollouts = []
-        rollouts_horizon = experiment_data['model']['model_params']['horizon']
         num_rollouts = args.num_test_rollouts
         y_init_std = args.ic_test_std
 
+        # stack y_init according to the batch size
+        y_init_stacked = y_init.repeat(batch_size // y_init.shape[0], 1, 1)
+
         with torch.no_grad():
             for _ in range(num_rollouts):
-                y_init_rollout = y_init + y_init_std * (2 * (torch.rand((experiment_data['model']['model_params']['batch_size'], 1, experiment_data['model']['model_params']['dim_in']), device=args.device) - 1.0))
-                y_init = y_init + torch.zeros((experiment_data['model']['model_params']['batch_size'], 1, experiment_data['model']['model_params']['dim_in']), device=args.device)
+                # set noisy initial condition for test
+                y_init_noisy = y_init_stacked + y_init_std * (2 * (torch.rand((batch_size, 1, experiment_data['model']['model_params']['dim_out']), device=args.device) - 0.5))
 
-                policy_rollouts.append(ren_module.forward_trajectory(u_in, y_init_rollout, rollouts_horizon).cpu().numpy())
-                policy_rollouts.append(ren_module.forward_trajectory(u_in, y_init, rollouts_horizon).cpu().numpy())
+                # generate rollouts
+                rollouts_noisy = ren_module.forward_trajectory(u_in, y_init_noisy, rollouts_horizon).cpu()
+                rollouts_fixed = ren_module.forward_trajectory(u_in, y_init_stacked, rollouts_horizon).cpu()
+
+                # add to plots
+                policy_rollouts.append(rollouts_fixed)
+                policy_rollouts.append(rollouts_noisy)
 
         plot_trajectories(rollouts=policy_rollouts, reference=expert_trajectory, save_dir=writer_dir, plot_name=f'ic-rollouts-std{y_init_std}')
 

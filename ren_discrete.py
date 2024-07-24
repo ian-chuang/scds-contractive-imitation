@@ -7,6 +7,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ren import REN
+from bijection import BijectionNet
+
 
 class DREN(REN):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
@@ -49,6 +51,10 @@ class DREN(REN):
         """
         super().__init__(dim_in, dim_out, dim_x, dim_v, batch_size, weight_init_std, linear_output, posdef_tol,
                          contraction_rate_lb, add_bias, device, horizon)
+
+        # bijection net
+        if self.bijection:
+            self.bijection_net = BijectionNet(self.dim_x, 1, 1, device=device)
 
         # auxiliary matrices
         self.X_shape = (2 * self.dim_x + self.dim_v, 2 * self.dim_x + self.dim_v)
@@ -141,8 +147,11 @@ class DREN(REN):
         self.x = F.linear(F.linear(self.x, self.F) + F.linear(w, self.B1) + F.linear(u_in, self.B2),
                           self.E.inverse())
 
+        if self.bijection:
+            self.x = self.bijection_net(self.x)
+
         y_out = F.linear(self.x, self.C2) + F.linear(w, self.D21) + F.linear(u_in, self.D22)
-        # TODO: this is kind of a diffeomorphism? replace with a bijection layer of normalizing flow?
+
         return y_out
 
     def forward_trajectory(self, u_in: torch.Tensor, y_init: torch.Tensor, horizon: int):

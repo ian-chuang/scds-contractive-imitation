@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
     # set expert traj (equal to ren horizon for now, TODO: Relax later with KL or other measures)
     if args.expert == "lasa":
-        expert_trajectory, dataloader = lasa_expert(args.motion_shape, args.horizon, args.device, n_dems=1)
+        expert_trajectory, dataloader = lasa_expert(args.motion_shape, args.horizon, args.device, n_dems=args.num_expert_trajectories)
 
         y_init = torch.Tensor(expert_trajectory[:, 0, :]).unsqueeze(1)
         y_init = y_init.to(args.device)
