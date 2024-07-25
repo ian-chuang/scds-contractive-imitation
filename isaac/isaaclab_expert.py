@@ -3,6 +3,8 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+"""Script to collect demonstrations with Isaac Lab environments."""
+
 """Launch Isaac Sim Simulator first."""
 
 import argparse
@@ -10,173 +12,166 @@ import argparse
 from omni.isaac.lab.app import AppLauncher
 
 # add argparse arguments
-parser = argparse.ArgumentParser(description="Train an RL agent with skrl.")
-parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
-parser.add_argument("--video_length", type=int, default=200, help="Length of the recorded video (in steps).")
-parser.add_argument("--video_interval", type=int, default=10000, help="Interval between video recordings (in steps).")
+parser = argparse.ArgumentParser(description="Collect demonstrations for Isaac Lab environments.")
 parser.add_argument("--cpu", action="store_true", default=False, help="Use CPU pipeline.")
-parser.add_argument("--disable-fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations.")
-parser.add_argument("--num-envs", type=int, default=None, help="Number of environments to simulate.")
+parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to simulate.")
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
-parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
-parser.add_argument("--max-iterations", type=int, default=None, help="RL Policy training iterations.")
-
+parser.add_argument("--device", type=str, default="keyboard", help="Device for interacting with environment")
+parser.add_argument("--num_demos", type=int, default=1, help="Number of episodes to store in the dataset.")
+parser.add_argument("--filename", type=str, default="hdf_dataset", help="Basename of output file.")
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
-
 # parse the arguments
 args_cli = parser.parse_args()
 
-# launch omniverse app
+# launch the simulator
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
+import contextlib
 import gymnasium as gym
 import os
-from datetime import datetime
+import torch
 
-from skrl.agents.torch.ppo import PPO, PPO_DEFAULT_CONFIG
-from skrl.memories.torch import RandomMemory
-from skrl.utils import set_seed
-from skrl.utils.model_instantiators.torch import deterministic_model, gaussian_model, shared_model
-
-from omni.isaac.lab.utils.dict import print_dict
+from omni.isaac.lab.devices import Se3Keyboard, Se3SpaceMouse
+from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
 
 import omni.isaac.lab_tasks  # noqa: F401
-from omni.isaac.lab_tasks.utils import load_cfg_from_registry, parse_env_cfg
-from omni.isaac.lab_tasks.utils.wrappers.skrl import SkrlSequentialLogTrainer, SkrlVecEnvWrapper, process_skrl_cfg
+from omni.isaac.lab_tasks.manager_based.manipulation.lift import mdp
+from omni.isaac.lab_tasks.utils.data_collector import RobomimicDataCollector
+from omni.isaac.lab_tasks.utils.parse_cfg import parse_env_cfg
+
+
+def pre_process_actions(delta_pose: torch.Tensor, gripper_command: bool) -> torch.Tensor:
+    """Pre-process actions for the environment."""
+    # compute actions based on environment
+    if "Reach" in args_cli.task:
+        # note: reach is the only one that uses a different action space
+        # compute actions
+        return delta_pose
+    else:
+        # resolve gripper command
+        gripper_vel = torch.zeros((delta_pose.shape[0], 1), dtype=torch.float, device=delta_pose.device)
+        gripper_vel[:] = -1 if gripper_command else 1
+        # compute actions
+        return torch.concat([delta_pose, gripper_vel], dim=1)
 
 
 def main():
-    """Train with skrl agent."""
-    # read the seed from command line
-    args_cli_seed = args_cli.seed
-
+    """Collect demonstrations from the environment using teleop interfaces."""
+    assert (
+        args_cli.task == "Isaac-Lift-Cube-Franka-IK-Rel-v0"
+    ), "Only 'Isaac-Lift-Cube-Franka-IK-Rel-v0' is supported currently."
     # parse configuration
-    env_cfg = parse_env_cfg(
-        args_cli.task, use_gpu=not args_cli.cpu, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
-    )
-    experiment_cfg = load_cfg_from_registry(args_cli.task, "skrl_cfg_entry_point")
+    env_cfg = parse_env_cfg(args_cli.task, use_gpu=not args_cli.cpu, num_envs=args_cli.num_envs)
+
+    # modify configuration such that the environment runs indefinitely
+    # until goal is reached
+    env_cfg.terminations.time_out = None
+    # set the resampling time range to large number to avoid resampling
+    env_cfg.commands.object_pose.resampling_time_range = (1.0e9, 1.0e9)
+    # we want to have the terms in the observations returned as a dictionary
+    # rather than a concatenated tensor
+    env_cfg.observations.policy.concatenate_terms = False
+
+    # add termination condition for reaching the goal otherwise the environment won't reset
+    env_cfg.terminations.object_reached_goal = DoneTerm(func=mdp.object_reached_goal)
+
+    # create environment
+    env = gym.make(args_cli.task, cfg=env_cfg)
+
+    # create controller
+    if args_cli.device.lower() == "keyboard":
+        teleop_interface = Se3Keyboard(pos_sensitivity=0.04, rot_sensitivity=0.08)
+    elif args_cli.device.lower() == "spacemouse":
+        teleop_interface = Se3SpaceMouse(pos_sensitivity=0.05, rot_sensitivity=0.005)
+    else:
+        raise ValueError(f"Invalid device interface '{args_cli.device}'. Supported: 'keyboard', 'spacemouse'.")
+    # add teleoperation key for env reset
+    teleop_interface.add_callback("L", env.reset)
+    # print helper
+    print(teleop_interface)
 
     # specify directory for logging experiments
-    log_root_path = os.path.join("logs", "skrl", experiment_cfg["agent"]["experiment"]["directory"])
-    log_root_path = os.path.abspath(log_root_path)
-    print(f"[INFO] Logging experiment in directory: {log_root_path}")
-
-    # specify directory for logging runs: {time-stamp}_{run_name}
-    log_dir = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    if experiment_cfg["agent"]["experiment"]["experiment_name"]:
-        log_dir += f'_{experiment_cfg["agent"]["experiment"]["experiment_name"]}'
-
-    # set directory into agent config
-    experiment_cfg["agent"]["experiment"]["directory"] = log_root_path
-    experiment_cfg["agent"]["experiment"]["experiment_name"] = log_dir
-
-    # update log_dir
-    log_dir = os.path.join(log_root_path, log_dir)
-
-    # max iterations for training
-    if args_cli.max_iterations:
-        experiment_cfg["trainer"]["timesteps"] = args_cli.max_iterations * experiment_cfg["agent"]["rollouts"]
-
+    log_dir = os.path.join("./logs/robomimic", args_cli.task)
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
-    dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), experiment_cfg)
     dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
-    dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), experiment_cfg)
 
-    # create isaac environment
-    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
-    # wrap for video recording
-    if args_cli.video:
-        video_kwargs = {
-            "video_folder": os.path.join(log_dir, "videos"),
-            "step_trigger": lambda step: step % args_cli.video_interval == 0,
-            "video_length": args_cli.video_length,
-            "disable_logger": True,
-        }
-        print("[INFO] Recording videos during training.")
-        print_dict(video_kwargs, nesting=4)
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
-    # wrap around environment for skrl
-    env = SkrlVecEnvWrapper(env)  # same as: `wrap_env(env, wrapper="isaac-orbit")`
-
-    # set seed for the experiment (override from command line)
-    set_seed(args_cli_seed if args_cli_seed is not None else experiment_cfg["seed"])
-
-    # instantiate models using skrl model instantiator utility
-    # https://skrl.readthedocs.io/en/latest/api/utils/model_instantiators.html
-    models = {}
-    # non-shared models
-    if experiment_cfg["models"]["separate"]:
-        models["policy"] = gaussian_model(
-            observation_space=env.observation_space,
-            action_space=env.action_space,
-            device=env.device,
-            **process_skrl_cfg(experiment_cfg["models"]["policy"]),
-        )
-        models["value"] = deterministic_model(
-            observation_space=env.observation_space,
-            action_space=env.action_space,
-            device=env.device,
-            **process_skrl_cfg(experiment_cfg["models"]["value"]),
-        )
-    # shared models
-    else:
-        models["policy"] = shared_model(
-            observation_space=env.observation_space,
-            action_space=env.action_space,
-            device=env.device,
-            structure=None,
-            roles=["policy", "value"],
-            parameters=[
-                process_skrl_cfg(experiment_cfg["models"]["policy"]),
-                process_skrl_cfg(experiment_cfg["models"]["value"]),
-            ],
-        )
-        models["value"] = models["policy"]
-
-    # instantiate a RandomMemory as rollout buffer (any memory can be used for this)
-    # https://skrl.readthedocs.io/en/latest/api/memories/random.html
-    memory_size = experiment_cfg["agent"]["rollouts"]  # memory_size is the agent's number of rollouts
-    memory = RandomMemory(memory_size=memory_size, num_envs=env.num_envs, device=env.device)
-
-    # configure and instantiate PPO agent
-    # https://skrl.readthedocs.io/en/latest/api/agents/ppo.html
-    agent_cfg = PPO_DEFAULT_CONFIG.copy()
-    experiment_cfg["agent"]["rewards_shaper"] = None  # avoid 'dictionary changed size during iteration'
-    agent_cfg.update(process_skrl_cfg(experiment_cfg["agent"]))
-
-    agent_cfg["state_preprocessor_kwargs"].update({"size": env.observation_space, "device": env.device})
-    agent_cfg["value_preprocessor_kwargs"].update({"size": 1, "device": env.device})
-
-    agent = PPO(
-        models=models,
-        memory=memory,
-        cfg=agent_cfg,
-        observation_space=env.observation_space,
-        action_space=env.action_space,
-        device=env.device,
+    # create data-collector
+    collector_interface = RobomimicDataCollector(
+        env_name=args_cli.task,
+        directory_path=log_dir,
+        filename=args_cli.filename,
+        num_demos=args_cli.num_demos,
+        flush_freq=env.num_envs,
+        env_config={"device": args_cli.device},
     )
 
-    # configure and instantiate a custom RL trainer for logging episode events
-    # https://skrl.readthedocs.io/en/latest/api/trainers.html
-    trainer_cfg = experiment_cfg["trainer"]
-    trainer = SkrlSequentialLogTrainer(cfg=trainer_cfg, env=env, agents=agent)
+    # reset environment
+    obs_dict, _ = env.reset()
 
-    # train the agent
-    trainer.train()
+    # reset interfaces
+    teleop_interface.reset()
+    collector_interface.reset()
+
+    # simulate environment -- run everything in inference mode
+    with contextlib.suppress(KeyboardInterrupt) and torch.inference_mode():
+        while not collector_interface.is_stopped():
+            # get keyboard command
+            delta_pose, gripper_command = teleop_interface.advance()
+            # convert to torch
+            delta_pose = torch.tensor(delta_pose, dtype=torch.float, device=env.device).repeat(env.num_envs, 1)
+            # compute actions based on environment
+            actions = pre_process_actions(delta_pose, gripper_command)
+
+            # TODO: Deal with the case when reset is triggered by teleoperation device.
+            #   The observations need to be recollected.
+            # store signals before stepping
+            # -- obs
+            for key, value in obs_dict["policy"].items():
+                collector_interface.add(f"obs/{key}", value)
+            # -- actions
+            collector_interface.add("actions", actions)
+
+            # perform action on environment
+            obs_dict, rewards, terminated, truncated, info = env.step(actions)
+            dones = terminated | truncated
+            # check that simulation is stopped or not
+            if env.unwrapped.sim.is_stopped():
+                break
+
+            # robomimic only cares about policy observations
+            # store signals from the environment
+            # -- next_obs
+            for key, value in obs_dict["policy"].items():
+                collector_interface.add(f"next_obs/{key}", value)
+            # -- rewards
+            collector_interface.add("rewards", rewards)
+            # -- dones
+            collector_interface.add("dones", dones)
+
+            # -- is success label
+            collector_interface.add("success", env.termination_manager.get_term("object_reached_goal"))
+
+            # flush data from collector for successful environments
+            reset_env_ids = dones.nonzero(as_tuple=False).squeeze(-1)
+            collector_interface.flush(reset_env_ids)
+
+            # check if enough data is collected
+            if collector_interface.is_stopped():
+                break
 
     # close the simulator
+    collector_interface.close()
     env.close()
 
 
 if __name__ == "__main__":
     # run the main function
     main()
-
     # close sim app
     simulation_app.close()

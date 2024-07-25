@@ -82,7 +82,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, u_in: torch.Tensor,
         # best model
         if best_loss - loss > 5e-6:
             best_model_state_dict = copy.deepcopy(model.state_dict())
-            best_loss = loss
+            best_loss = loss.item()
             best_train_epoch = epoch
 
         # check no progress
@@ -102,7 +102,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, u_in: torch.Tensor,
             trajectories.append(out.detach().cpu().numpy())
 
         # tensorboard
-        writer.add_scalars('Training Loss', {'Training': loss.item(), 'Best': best_loss.item()}, epoch + 1)
+        writer.add_scalars('Training Loss', {'Training': loss.item(), 'Best': best_loss}, epoch + 1)
         writer.flush()
 
     # training time and best results

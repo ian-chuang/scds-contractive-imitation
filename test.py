@@ -103,4 +103,5 @@ if __name__ == '__main__':
         plot_trajectories(rollouts=policy_rollouts, reference=expert_trajectory, save_dir=writer_dir, plot_name=f'ic-rollouts-std{y_init_std}')
 
         # TODO: patch grid plots
+        # plot_trajectories(rollouts=experiment_data['model']['train_trajectories'], reference=expert_trajectory, save_dir=writer_dir, plot_name=f'ic-train-std{y_init_std}')
         # plot_policy(ren_module, policy_rollouts, expert_trajectory, save_dir=writer_dir, plot_name=f'global-rollouts-std{y_init_std}', grid_coordinates=np.array([]))
