@@ -126,8 +126,6 @@ class DREN(REN):
     def forward(self, u_in):
         """ Forward pass of REN.
 
-        # TODO: What is happening with x? Shouldn't it be passed at each stage? CHECK THIS
-
         Args:
             u_in (torch.Tensor): Input with the size of (batch_size, 1, self.dim_in).
 

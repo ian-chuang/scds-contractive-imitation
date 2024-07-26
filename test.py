@@ -62,13 +62,19 @@ if __name__ == '__main__':
         except KeyError:
             expert = args.expert
 
+        try: #TODO: temporary for backward compatibility
+            num_expert_trajectories = experiment_data['model']['num_expert_trajectories']
+        except KeyError:
+            num_expert_trajectories = args.num_expert_trajectories
+
         if expert == "lasa":
             try: # TODO: temporary structure to for backward compatibility
                 motion_type = experiment_data['motion_shape']
             except KeyError:
                 motion_type = experiment_data['name'].split('-')[2]
 
-            expert_trajectory, dataloader = lasa_expert(motion_type, experiment_data['model']['model_params']['horizon'], args.device, n_dems=args.num_expert_trajectories)
+            expert_trajectory, dataloader = lasa_expert(motion_type, experiment_data['model']['model_params']['horizon'],
+                                                        args.device, n_dems=num_expert_trajectories)
 
             # y_init is the first state in trajectory
             y_init = torch.Tensor(expert_trajectory[:, 0, :]).unsqueeze(1)

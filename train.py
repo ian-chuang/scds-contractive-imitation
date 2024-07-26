@@ -55,7 +55,7 @@ if __name__ == '__main__':
     timestamp = datetime.now().strftime('%d-%H%M')
     experiment_name = f'{type(model).__name__.lower()}-{args.expert}-{args.motion_shape}-h{args.horizon}' \
                       f'-x{args.dim_x}-l{args.dim_v}-e{args.total_epochs}-b{args.batch_size}' \
-                      f'-n{args.ic_noise_rate}-cr{args.crate_lb}-t{timestamp}'
+                      f'-n{args.ic_noise_rate}-cr{args.crate_lb}-e{args.num_expert_trajectories}-t{timestamp}'
 
     writer_dir = f'{args.experiment_dir}/{experiment_name}'
     writer = SummaryWriter(writer_dir)
@@ -67,6 +67,7 @@ if __name__ == '__main__':
                                             args.device, args.batch_size)
 
     ren_data["expert"] = args.expert
+    ren_data["num_expert_trajectories"] = args.num_expert_trajectories
 
     if args.expert == "lasa":
         ren_data["motion_shape"] = args.motion_shape
