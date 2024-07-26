@@ -61,8 +61,17 @@ if __name__ == '__main__':
     writer = SummaryWriter(writer_dir)
 
     # training loop # TODO: make this more efficient using kwargs
-    ren_trained = train_ren_model(model, args.lr, u_in, y_init, args.horizon, expert_trajectory,
-                                  args.total_epochs, args.lr_start_factor, args.lr_end_factor,
-                                  args.patience_epoch, args.log_epoch, args.ic_noise_rate, writer,
-                                  args.device, args.batch_size)
+    ren_trained, ren_data = train_ren_model(model, args.lr, u_in, y_init, args.horizon, expert_trajectory,
+                                            args.total_epochs, args.lr_start_factor, args.lr_end_factor,
+                                            args.patience_epoch, args.log_epoch, args.ic_noise_rate, writer,
+                                            args.device, args.batch_size)
 
+    ren_data["expert"] = args.expert
+
+    if args.expert == "lasa":
+        ren_data["motion_shape"] = args.motion_shape
+    else:
+        raise NotImplementedError(f'Expert is not fully implemented at this stage!')
+
+    # save the data
+    torch.save(ren_data, os.path.join(writer_dir, 'best_model.pth'))
