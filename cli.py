@@ -10,7 +10,7 @@ def argument_parser():
     parser.add_argument('--model-type', type=str, default=None, help='Choose a model between "continuous" and "discrete" for the underlying REN.')
     parser.add_argument('--device', type=str, default='cpu' if torch.cuda.is_available() else "cpu", help='Device to run the computations on, "cpu" or "cuda:0". Default is "cuda:0" if available, otherwise "cpu".')
     parser.add_argument('--horizon', type=int, default=50, help='Horizon value for the computation. Default is 50.')
-    parser.add_argument('--dim-x', type=int, default=8, help='Dimension x. Default is 8.')
+    parser.add_argument('--dim-x', type=int, default=32, help='Dimension x. Default is 32.')
     parser.add_argument('--dim-in', type=int, default=2, help='Dimension u, or exogenous input. Default is 2.')
     parser.add_argument('--dim-out', type=int, default=2, help='Dimension y, or output. Default is 2.')
     parser.add_argument('--dim-v', type=int, default=2, help='Implicit equation size. Default is 8.')
@@ -19,8 +19,7 @@ def argument_parser():
 
     # bijection args
     parser.add_argument('--bijection', action='store_true', default=False, help='Use bijection net before projecting the output.')
-    parser.add_argument('--num-bijection-blocks', type=int, default=2, help='Number of bijection blocks. Default is 2.')
-    parser.add_argument('--num-bijection-layers', type=int, default=2, help='Number of hidden layers in the coupling layer design. Default is 2.')
+    parser.add_argument('--num-bijection-layers', type=int, default=2, help='Number of hidden layers in the coupling layer design and blocks. Default is 2.')
 
     # training args
     parser.add_argument('--total-epochs', type=int, default=10000, help='Total number of epochs for training. Default is 200.')

@@ -38,12 +38,14 @@ if __name__ == '__main__':
     if args.model_type == 'continuous':
         model = CREN(dim_in=args.dim_in, dim_out=args.dim_out, dim_x=args.dim_x, dim_v=args.dim_v,
                      batch_size=args.batch_size, device=args.device, horizon=args.horizon,
-                     contraction_rate_lb=args.crate_lb)
+                     contraction_rate_lb=args.crate_lb, bijection=args.bijection,
+                     num_bijection_layers=args.num_bijection_layers)
 
     elif args.model_type == 'discrete':
         model = DREN(dim_in=args.dim_in, dim_out=args.dim_out, dim_x=args.dim_x, dim_v=args.dim_v,
                      batch_size=args.batch_size, device=args.device, horizon=args.horizon,
-                     contraction_rate_lb=args.crate_lb)
+                     contraction_rate_lb=args.crate_lb, bijection=args.bijection,
+                     num_bijection_layers=args.num_bijection_layers)
 
     else:
         raise(NotImplementedError('Please determine a correct model type: ["continuous", "discrete"]!'))

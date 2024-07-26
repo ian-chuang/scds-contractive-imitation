@@ -35,7 +35,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, u_in: torch.Tensor,
         noise_ratio (float): Ratio of the noise on the output or internal state.
     """
 
-    print(f'Training { type(model).__name__} model for {total_epochs} epochs and {horizon} samples')
+    print(f'Training { type(model).__name__} model for {total_epochs} epochs and {horizon} samples on {device}')
 
     # optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)

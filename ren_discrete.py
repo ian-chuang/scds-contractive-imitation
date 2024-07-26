@@ -7,14 +7,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ren import REN
-from bijection import BijectionNet
 
 
 class DREN(REN):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
                  batch_size: int = 1, weight_init_std: float = 0.5, linear_output: bool = False,
                  posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0, add_bias: bool = False,
-                 device: str = "cpu", horizon: int = None):
+                 device: str = "cpu", horizon: int = None, bijection: bool = False,
+                 num_bijection_layers: int = 0):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
 
@@ -50,11 +50,7 @@ class DREN(REN):
             device(str, optional): Pass the name of the device. Defaults to cpu.
         """
         super().__init__(dim_in, dim_out, dim_x, dim_v, batch_size, weight_init_std, linear_output, posdef_tol,
-                         contraction_rate_lb, add_bias, device, horizon)
-
-        # bijection net
-        if self.bijection:
-            self.bijection_net = BijectionNet(self.dim_x, 1, 1, device=device)
+                         contraction_rate_lb, add_bias, device, horizon, bijection, num_bijection_layers)
 
         # auxiliary matrices
         self.X_shape = (2 * self.dim_x + self.dim_v, 2 * self.dim_x + self.dim_v)
@@ -71,7 +67,7 @@ class DREN(REN):
         # v signal
         self.D12_shape = (self.dim_v, self.dim_in)
 
-        # define training nn params TODO: Replace this with straightforward definition
+        # define training nn params
         self.training_param_names = ['X', 'Y', 'B2', 'C2', 'D21', 'D22', 'D12']
         if self.linear_output:
             # set D21 to zero
@@ -145,10 +141,12 @@ class DREN(REN):
         self.x = F.linear(F.linear(self.x, self.F) + F.linear(w, self.B1) + F.linear(u_in, self.B2),
                           self.E.inverse())
 
-        if self.bijection:
-            self.x = self.bijection_net(self.x)
-
+        # compute output
         y_out = F.linear(self.x, self.C2) + F.linear(w, self.D21) + F.linear(u_in, self.D22)
+
+        # apply a bijection net
+        if self.bijection:
+            y_out = self.bijection_net(y_out) - self.bijection_net(torch.zeros(y_out.shape, device=self.device))
 
         return y_out
 

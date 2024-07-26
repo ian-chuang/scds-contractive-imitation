@@ -3,17 +3,13 @@ from RealNVP (https://arxiv.org/abs/1605.08803).
 """
 
 import torch
-
 import torch.nn as nn
-import matplotlib.pyplot as plt
-
-from torch import autograd
 
 
 class BijectionNet(nn.Sequential):
     """ A sequential container of flows based on coupling layers.
     """
-    def __init__(self, num_dims, num_blocks, num_hidden, device: str = 'cuda:0'):
+    def __init__(self, num_dims, num_blocks, num_hidden, device):
         self.num_dims = num_dims
         modules = []
         mask = torch.arange(0, num_dims) % 2  # alternating inputs
@@ -23,7 +19,7 @@ class BijectionNet(nn.Sequential):
         for _ in range(num_blocks):
             modules += [
                 CouplingLayer(
-                    num_inputs=num_dims, num_hidden=num_hidden, mask=mask),
+                    num_inputs=num_dims, num_hidden=num_hidden, mask=mask, device=device),
             ]
             mask = 1 - mask  # flipping mask
         super(BijectionNet, self).__init__(*modules)
@@ -42,14 +38,16 @@ class BijectionNet(nn.Sequential):
 
 class CouplingLayer(nn.Module):
 
-    def __init__(self, num_inputs, num_hidden, mask):
+    def __init__(self, num_inputs, num_hidden, mask, device):
         super(CouplingLayer, self).__init__()
 
         self.num_inputs = num_inputs
         self.mask = mask
 
         self.scale_net = FCNN(in_dim=num_inputs, out_dim=num_inputs, hidden_dim=num_hidden)
+        self.scale_net.to(device)
         self.translate_net = FCNN(in_dim=num_inputs, out_dim=num_inputs, hidden_dim=num_hidden)
+        self.translate_net.to(device)
 
         nn.init.zeros_(self.translate_net.network[-1].weight.data)
         nn.init.zeros_(self.translate_net.network[-1].bias.data)
@@ -57,7 +55,7 @@ class CouplingLayer(nn.Module):
         nn.init.zeros_(self.scale_net.network[-1].weight.data)
         nn.init.zeros_(self.scale_net.network[-1].bias.data)
 
-    def forward(self, inputs, mode='direct'):
+    def forward(self, inputs):
         mask = self.mask
         masked_inputs = inputs * mask
 

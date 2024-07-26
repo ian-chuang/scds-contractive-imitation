@@ -10,12 +10,15 @@ from torchdiffeq import odeint_adjoint as odeint
 
 from ren import REN
 
+from bijection import BijectionNet
+
 
 class CREN(REN):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
                  batch_size: int = 1, posdef_tol: float = 5.0e-2, contraction_rate_lb: float = 0.0,
                  add_bias: bool = False, linear_output: bool = True, device: str = "cpu",
-                 weight_init_std: float = 0.5, horizon: int = None):
+                 weight_init_std: float = 0.5, horizon: int = None, bijection: bool = False,
+                 num_bijection_layers: int = 0):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
 
@@ -37,7 +40,7 @@ class CREN(REN):
             device(str, optional): Pass the name of the device. Defaults to cpu.
         """
         super().__init__(dim_in, dim_out, dim_x, dim_v, batch_size, weight_init_std, linear_output, posdef_tol,
-                         contraction_rate_lb, add_bias, device, horizon)
+                         contraction_rate_lb, add_bias, device, horizon, bijection, num_bijection_layers)
 
         # auxiliary matrices
         self.Pstar = nn.Parameter(torch.randn(dim_x, dim_x, device=device) * self.weight_init_std)
@@ -108,19 +111,25 @@ class CREN(REN):
             v = F.linear(x, self.C1[i, :]) + F.linear(w, self.D11[i, :]) + F.linear(u_in, self.D12[i, :])
             w = w + (self.eye[i, :] * self.act(v)).unsqueeze(1)
 
+        # state evolution
         x_dot = (F.linear(x, self.A) + F.linear(w, self.B1) + F.linear(u_in, self.B2))
 
         return x_dot
 
-    def output(self, xi):
+    def output(self, x):
         """ Calculates the output yt given the state xi and the input u.
 
         This is reduced to a single transformation applied via the C2 matrix which is trained during training.
         The linear transformation preserves contraction in the target space, if the latent space is contractive.
         """
 
-        yt = F.linear(xi, self.C2)
-        return yt
+        y_out = F.linear(x, self.C2)
+
+        # apply a bijection net
+        if self.bijection:
+            y_out = self.bijection_net(y_out) - self.bijection_net(torch.zeros(y_out.shape, device=self.device))
+
+        return y_out
 
 
     def forward_trajectory(self, u_in: torch.Tensor, y_init: torch.Tensor, horizon: int):
