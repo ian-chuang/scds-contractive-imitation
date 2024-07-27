@@ -9,7 +9,7 @@ from bijection import BijectionNet
 
 class REN(nn.Module, ABC):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
-                 batch_size: int = 1, weight_init_std: float = 0.5, linear_output: bool = False,
+                 batch_size: int, weight_init_std: float = 0.5, linear_output: bool = False,
                  posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0, add_bias: bool = False,
                  device: str = "cpu", horizon: int = None, bijection: bool = False,
                  num_bijection_layers: int = 0):
@@ -28,7 +28,7 @@ class REN(nn.Module, ABC):
             dim_x (int): Internal state dimension. This state evolves with contraction properties.
             dim_v (int): Complexity of the implicit layer.
 
-            batch_size(int, optional): Parallel batch size for efficient computing. Defaults to 1.
+            batch_size(int, optional): Parallel batch size for efficient computing.
             weight_init_std (float, optional): Weight initialization. Set to 0.1 by default.
 
             linear_output (bool, optional): If set True, the output matrices are arranged in a way so that

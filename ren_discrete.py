@@ -11,7 +11,7 @@ from ren import REN
 
 class DREN(REN):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
-                 batch_size: int = 1, weight_init_std: float = 0.5, linear_output: bool = False,
+                 batch_size: int, weight_init_std: float = 0.5, linear_output: bool = False,
                  posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0, add_bias: bool = False,
                  device: str = "cpu", horizon: int = None, bijection: bool = False,
                  num_bijection_layers: int = 0):
@@ -129,11 +129,12 @@ class DREN(REN):
             y_out (torch.Tensor): Output with (batch_size, 1, self.dim_out).
         """
 
-        w = torch.zeros(self.batch_size, 1, self.dim_v, device=self.device)
+        w = torch.zeros(self.x.size(0), 1, self.dim_v, device=self.device)
 
         # update each row of w using Eq. (8) with a lower triangular D11
         for i in range(self.dim_v):
             #  v is element i of v with dim (batch_size, 1)
+
             v = F.linear(self.x, self.C1[i, :]) + F.linear(w, self.D11[i, :]) + F.linear(u_in, self.D12[i,:])
             w = w + (self.eye[i, :] * self.act(v / self.Lambda[i])).unsqueeze(1)
 

@@ -72,7 +72,6 @@ def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray, save_di
 
     # find trajectory limits
     x_min, x_max, y_min, y_max = find_limits(reference)
-    print(find_limits(reference))
 
     # calibrate the axis
     plt.figure(figsize=PlotConfigs.FIGURE_SIZE, dpi=PlotConfigs.FIGURE_DPI)
@@ -155,12 +154,12 @@ def plot_trajectories_time(ren: REN, reference: np.ndarray, horizon: int, save_d
 
 def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
                 save_dir: str, plot_name: str, space_stretch: float = 0.8,
-                grid_coordinates: np.ndarray = 1.0, grid_density: int = 3,
+                grid_coordinates: np.ndarray = np.array([[0.0, -0.4], [0.0, -0.1]]), grid_density: int = 3,
                 horizon: int = 100):
 
     # TODO: change this to cover patches of state space instead of the entire state space
     # find trajectory limits
-    x_min, x_max, y_min, y_max = find_limits(reference[0, :, :])
+    x_min, x_max, y_min, y_max = find_limits(reference)
 
     # calibrate the axis
     fig = plt.figure(figsize=PlotConfigs.FIGURE_SIZE, dpi=PlotConfigs.FIGURE_DPI)
@@ -198,12 +197,12 @@ def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
     trajectories = np.concatenate(trajectories, 0)
 
     for i in range(trajectories.shape[0]):
-        start_handle = plt.scatter(trajectories[i, 0, 0], trajectories[i, 0, 1], marker='x',
-                                   color=PlotConfigs.ANNOTATE_COLOR, linewidth=3, s=100,
-                                   label='Start')
+    #     start_handle = plt.scatter(trajectories[i, 0, 0], trajectories[i, 0, 1], marker='x',
+    #                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=3, s=100,
+    #                                label='Start')
 
-        # plt.plot(trajectories[i, :, 0], trajectories[i, :, 1],  linewidth=0.1, c=PlotConfigs.ROLLOUT_COLOR)
-        plt.streamplot(trajectories[i, :, 0], trajectories[i, :, 1], np.diff(trajectories[i, :, 0]), np.diff(trajectories[i, :, 1]), color="black", linewidth=1)
+        plt.plot(trajectories[i, :, 0], trajectories[i, :, 1],  linewidth=0.1, c=PlotConfigs.ROLLOUT_COLOR)
+    #     plt.streamplot(trajectories[i, :, 0], trajectories[i, :, 1], np.diff(trajectories[i, :, 0]), np.diff(trajectories[i, :, 1]), color="black", linewidth=1)
 
     red_arrows = plt.Line2D([0], [0], color=PlotConfigs.ROLLOUT_COLOR,
                             linestyle='-', marker='>', label='Reproduced')

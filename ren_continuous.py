@@ -15,7 +15,7 @@ from bijection import BijectionNet
 
 class CREN(REN):
     def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
-                 batch_size: int = 1, posdef_tol: float = 5.0e-2, contraction_rate_lb: float = 0.0,
+                 batch_size: int, posdef_tol: float = 5.0e-2, contraction_rate_lb: float = 0.0,
                  add_bias: bool = False, linear_output: bool = True, device: str = "cpu",
                  weight_init_std: float = 0.5, horizon: int = None, bijection: bool = False,
                  num_bijection_layers: int = 0):
@@ -105,7 +105,7 @@ class CREN(REN):
         """
         u_in = torch.zeros((1, 2), device=self.device) # TODO: Remove this line and use the input argument
 
-        w = torch.zeros(self.batch_size, 1, self.dim_v, device=self.device)
+        w = torch.zeros(self.x.size(0), 1, self.dim_v, device=self.device)
 
         for i in range(self.dim_v):
             v = F.linear(x, self.C1[i, :]) + F.linear(w, self.D11[i, :]) + F.linear(u_in, self.D12[i, :])

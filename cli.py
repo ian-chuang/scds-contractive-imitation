@@ -14,7 +14,7 @@ def argument_parser():
     parser.add_argument('--dim-in', type=int, default=2, help='Dimension u, or exogenous input. Default is 2.')
     parser.add_argument('--dim-out', type=int, default=2, help='Dimension y, or output. Default is 2.')
     parser.add_argument('--dim-v', type=int, default=2, help='Implicit equation size. Default is 8.')
-    parser.add_argument('--batch-size', type=int, default=15, help='Number of forward trajectories of the network and expert trajectories at each step. Default is 1.')
+    parser.add_argument('--batch-size', type=int, default=16, help='Number of forward trajectories of the network and expert trajectories at each step. Default is 1.')
     parser.add_argument('--experiment-dir', type=str, default='boards', help='Name tag for the experiments. By default it will be the "boards" folder.')
 
     # bijection args
@@ -45,6 +45,7 @@ def argument_parser():
     parser.add_argument('--expert', type=str, default='lasa', help='Expert type. Default is "lasa".')
     parser.add_argument('--motion-shape', type=str, default="CShape", help='Motion shape in LASA dataset. Choose from [Angle, CShape, GShape, Sine, Snake, Worm, etc].')
     parser.add_argument('--num-expert-trajectories', type=int, default=5, help='Number of expert trajectories for training. Default is 5 for LASA dataset.')
+    parser.add_argument('--num-augment-trajectories', type=int, default=0, help='Number of augmented trajectories for training. Default is 0 for LASA dataset.')
 
     # test args
     parser.add_argument('--num-test-rollouts', type=int, default=20, help='Number of test rollouts for plots.')
@@ -54,12 +55,6 @@ def argument_parser():
     args = parser.parse_args()
 
     # assertions and warning
-    if args.expert == "lasa":
-        assert args.motion_shape is not None, "Motion shape must be passed if expert is set to lasa."
-
-    if args.load_model is None:
-        assert args.batch_size % args.num_expert_trajectories == 0, "Batch size needs to be a multiple of number of expert trajectories."
-
     if args.total_epochs < 10000 and args.load_model is None:
         print(f'Minimum of 10000 epochs are required for proper training')
 

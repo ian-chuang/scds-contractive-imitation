@@ -53,7 +53,6 @@ if __name__ == '__main__':
 
         # writer dir
         writer_dir = experiment_data['dir']
-        batch_size = experiment_data['model']['model_params']['batch_size']
         rollouts_horizon = experiment_data['model']['model_params']['horizon']
 
         # plot the training trajectories
@@ -73,41 +72,39 @@ if __name__ == '__main__':
             except KeyError:
                 motion_type = experiment_data['name'].split('-')[2]
 
-            expert_trajectory, dataloader = lasa_expert(motion_type, experiment_data['model']['model_params']['horizon'],
-                                                        args.device, n_dems=num_expert_trajectories)
-
-            # y_init is the first state in trajectory
-            y_init = torch.Tensor(expert_trajectory[:, 0, :]).unsqueeze(1)
-
-            # numpy for expert trajectory
-            expert_trajectory = expert_trajectory.cpu().numpy()
-
-            # input is set to zero
-            u_in = torch.zeros((batch_size, 1, experiment_data['model']['model_params']['dim_in']), device=args.device)
+            dataloader = lasa_expert(motion_type, experiment_data['model']['model_params']['horizon'],
+                                     args.device, num_exp_trajectories=num_expert_trajectories,
+                                     num_aug_trajectories=0, batch_size=num_expert_trajectories)
 
         # test parameters
         policy_rollouts = []
         num_rollouts = args.num_test_rollouts
         y_init_std = args.ic_test_std
 
-        # stack y_init according to the batch size
-        y_init_stacked = y_init.repeat(batch_size // y_init.shape[0], 1, 1)
-
         with torch.no_grad():
+
+            # load the data as a single batch
+            y_init, expert_trajectories = next(iter(dataloader))
+            batch_size = y_init.size(0)
+
             for _ in range(num_rollouts):
+
                 # set noisy initial condition for test
-                y_init_noisy = y_init_stacked + y_init_std * (2 * (torch.rand((batch_size, 1, experiment_data['model']['model_params']['dim_out']), device=args.device) - 0.5))
+                y_init_noisy = y_init + y_init_std * (2 * (torch.rand((batch_size, 1, experiment_data['model']['model_params']['dim_out']), device=args.device) - 0.5))
+
+                # input is set to zero
+                u_in = torch.zeros((batch_size, 1, experiment_data['model']['model_params']['dim_in']), device=args.device)
 
                 # generate rollouts
                 rollouts_noisy = ren_module.forward_trajectory(u_in, y_init_noisy, rollouts_horizon).cpu()
-                rollouts_fixed = ren_module.forward_trajectory(u_in, y_init_stacked, rollouts_horizon).cpu()
+                rollouts_fixed = ren_module.forward_trajectory(u_in, y_init, rollouts_horizon).cpu()
 
                 # add to plots
                 policy_rollouts.append(rollouts_fixed)
                 policy_rollouts.append(rollouts_noisy)
 
-        plot_trajectories(rollouts=policy_rollouts, reference=expert_trajectory, save_dir=writer_dir, plot_name=f'ic-rollouts-std{y_init_std}')
+        plot_trajectories(rollouts=policy_rollouts, reference=expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'ic-rollouts-std{y_init_std}')
 
         # TODO: patch grid plots
         # plot_trajectories(rollouts=experiment_data['model']['train_trajectories'], reference=expert_trajectory, save_dir=writer_dir, plot_name=f'ic-train-std{y_init_std}')
-        # plot_policy(ren_module, policy_rollouts, expert_trajectory, save_dir=writer_dir, plot_name=f'global-rollouts-std{y_init_std}', grid_coordinates=np.array([]))
+        plot_policy(ren_module, policy_rollouts, expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'global-rollouts-std{y_init_std}')

@@ -16,20 +16,21 @@ from plot import plot_trajectories, plot_policy
 
 # main entry
 if __name__ == '__main__':
-    # TODO: create a superclass for REN-IL that encompasses both CREN and DREN
 
     # parse and set experiment arguments
     args = argument_parser()
 
     # set expert traj (equal to ren horizon for now, TODO: Relax later with KL or other measures)
     if args.expert == "lasa":
-        expert_trajectory, dataloader = lasa_expert(args.motion_shape, args.horizon, args.device, n_dems=args.num_expert_trajectories)
+        dataloader = lasa_expert(motion_shape=args.motion_shape, horizon=args.horizon,
+                                 device=args.device, batch_size=args.batch_size,
+                                 num_exp_trajectories=args.num_expert_trajectories,
+                                 num_aug_trajectories=args.num_augment_trajectories,
+                                 ic_noise_rate=args.ic_noise_rate)
 
-        y_init = torch.Tensor(expert_trajectory[:, 0, :]).unsqueeze(1)
-        y_init = y_init.to(args.device)
-
-        # input is set to zero
-        u_in = torch.zeros((args.batch_size, 1, args.dim_in), device=args.device)
+        # sanity check for the dataset
+        ic, traj = next(iter(dataloader))
+        print(f'Expert data size [{ic.shape}, {traj.shape}], total of {len(dataloader.dataset)} entries')
 
     else:
         raise(NotImplementedError(f'Expert data is not available!'))
@@ -63,13 +64,17 @@ if __name__ == '__main__':
     writer = SummaryWriter(writer_dir)
 
     # training loop # TODO: make this more efficient using kwargs
-    ren_trained, ren_data = train_ren_model(model, args.lr, u_in, y_init, args.horizon, expert_trajectory,
-                                            args.total_epochs, args.lr_start_factor, args.lr_end_factor,
-                                            args.patience_epoch, args.log_epoch, args.ic_noise_rate, writer,
-                                            args.device, args.batch_size)
+    ren_trained, ren_data = train_ren_model(model=model, lr=args.lr, horizon=args.horizon,
+                                            expert_data=dataloader, total_epochs=args.total_epochs,
+                                            lr_start_factor=args.lr_start_factor, writer=writer,
+                                            lr_end_factor=args.lr_end_factor,
+                                            patience_epoch=args.patience_epoch,
+                                            log_epoch=args.log_epoch)
 
     ren_data["expert"] = args.expert
     ren_data["num_expert_trajectories"] = args.num_expert_trajectories
+    ren_data["num_augment_trajectories"] = args.num_augment_trajectories
+    ren_data["ic_noise_rate"] = args.ic_noise_rate
 
     if args.expert == "lasa":
         ren_data["motion_shape"] = args.motion_shape
