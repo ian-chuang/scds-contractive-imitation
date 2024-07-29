@@ -44,7 +44,7 @@ def argument_parser():
     # lasa args
     parser.add_argument('--expert', type=str, default='lasa', help='Expert type. Default is "lasa".')
     parser.add_argument('--motion-shape', type=str, default="CShape", help='Motion shape in LASA dataset. Choose from [Angle, CShape, GShape, Sine, Snake, Worm, etc].')
-    parser.add_argument('--num-expert-trajectories', type=int, default=5, help='Number of expert trajectories for training. Default is 5 for LASA dataset.')
+    parser.add_argument('--num-expert-trajectories', type=int, default=4, help='Number of expert trajectories for training. Default is 5 for LASA dataset.')
     parser.add_argument('--num-augment-trajectories', type=int, default=0, help='Number of augmented trajectories for training. Default is 0 for LASA dataset.')
 
     # test args

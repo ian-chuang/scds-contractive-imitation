@@ -74,14 +74,25 @@ motions=("CShape")
 # $python train.py --model-type discrete --device cuda:0  --dim-x 32 --total-epochs 30000 --motion-shape Multi_Models_3 --experiment-dir boards/multi-models --crate-lb 1.2 --batch-size 70 --num-expert-trajectories 7&
 # $python train.py --model-type discrete --device cuda:0  --dim-x 32 --total-epochs 30000 --motion-shape Multi_Models_4 --experiment-dir boards/multi-models --crate-lb 1.2 --batch-size 70 --num-expert-trajectories 7&
 
-$python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_1 --experiment-dir boards/multi-models --crate-lb 1.0 --batch-size 70 --num-expert-trajectories 7&
-$python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_2 --experiment-dir boards/multi-models --crate-lb 1.0 --batch-size 70 --num-expert-trajectories 7&
-$python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_3 --experiment-dir boards/multi-models --crate-lb 1.0 --batch-size 70 --num-expert-trajectories 7&
-$python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_4 --experiment-dir boards/multi-models --crate-lb 1.0 --batch-size 70 --num-expert-trajectories 7&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_1 --experiment-dir boards/multi-models --crate-lb 1.0 --batch-size 70 --num-expert-trajectories 7&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_2 --experiment-dir boards/multi-models --crate-lb 1.0 --batch-size 70 --num-expert-trajectories 7&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_3 --experiment-dir boards/multi-models --crate-lb 1.0 --batch-size 70 --num-expert-trajectories 7&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_4 --experiment-dir boards/multi-models --crate-lb 1.0 --batch-size 70 --num-expert-trajectories 7&
 
 
-$python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_1 --experiment-dir boards/multi-models --crate-lb 4.6 --batch-size 70 --num-expert-trajectories 7&
-$python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_2 --experiment-dir boards/multi-models --crate-lb 4.6 --batch-size 70 --num-expert-trajectories 7&
-$python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_3 --experiment-dir boards/multi-models --crate-lb 4.6 --batch-size 70 --num-expert-trajectories 7&
-$python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_4 --experiment-dir boards/multi-models --crate-lb 4.6 --batch-size 70 --num-expert-trajectories 7&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_1 --experiment-dir boards/multi-models --crate-lb 4.6 --batch-size 70 --num-expert-trajectories 7&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_2 --experiment-dir boards/multi-models --crate-lb 4.6 --batch-size 70 --num-expert-trajectories 7&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_3 --experiment-dir boards/multi-models --crate-lb 4.6 --batch-size 70 --num-expert-trajectories 7&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_4 --experiment-dir boards/multi-models --crate-lb 4.6 --batch-size 70 --num-expert-trajectories 7&
+
+# Augmentation vs no augmentation
+$python train.py --model-type discrete --device cuda:0  --dim-x 64 --total-epochs 15000 --experiment-dir boards/noaugmentation/nobij &
+$python train.py --model-type discrete --device cuda:0  --dim-x 64 --total-epochs 15000 --experiment-dir boards/augmentation/nobij  --num-augment-trajectories 100&
+$python train.py --model-type discrete --device cuda:0  --dim-x 64 --total-epochs 15000 --experiment-dir boards/noaugmentation/bij --bijection&
+$python train.py --model-type discrete --device cuda:0  --dim-x 64 --total-epochs 15000 --experiment-dir boards/augmentation/bij --bijection --num-augment-trajectories 100&
+
+$python train.py --model-type discrete --device cuda:0  --dim-x 64 --crate-lb 1.2 --total-epochs 15000 --experiment-dir boards/noaugmentation/nobij &
+$python train.py --model-type discrete --device cuda:0  --dim-x 64 --crate-lb 1.2 --total-epochs 15000 --experiment-dir boards/augmentation/nobij  --num-augment-trajectories 100&
+$python train.py --model-type discrete --device cuda:0  --dim-x 64 --crate-lb 1.2 --total-epochs 15000 --experiment-dir boards/noaugmentation/bij --bijection&
+$python train.py --model-type discrete --device cuda:0  --dim-x 64 --crate-lb 1.2 --total-epochs 15000 --experiment-dir boards/augmentation/bij --bijection --num-augment-trajectories 100&
 

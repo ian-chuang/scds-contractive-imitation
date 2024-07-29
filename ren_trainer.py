@@ -37,7 +37,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, horizon: int,
         device (str): Name of the computation device.
     """
 
-    print(f'Training { type(model).__name__} model for {total_epochs} epochs and {horizon} samples on {device}')
+    print(f'Training { type(model).__name__} model for {total_epochs} epochs and horizon {horizon}')
 
     # optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)

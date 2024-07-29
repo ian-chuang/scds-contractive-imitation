@@ -1,11 +1,9 @@
 import torch
-
 import numpy as np
 import matplotlib.pyplot as plt
 
 from os import PathLike
-from typing import List, Union
-
+from typing import List
 from tqdm import tqdm
 
 from ren import REN
@@ -149,6 +147,7 @@ def plot_trajectories_time(ren: REN, reference: np.ndarray, horizon: int, save_d
 
     ax0.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
     ax1.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
+    plt.grid()
 
     plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE, dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
 
@@ -167,15 +166,16 @@ def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
     axes = plt.gca()
     axes.set_xlim([x_min - space_stretch, x_max + space_stretch])
     axes.set_ylim([y_min - space_stretch, y_max + space_stretch])
+    plt.grid()
 
     plt.scatter(reference[:, :, 0], reference[:, :, 1], color=PlotConfigs.TRAJECTORY_COLOR, marker='o',
                 s=PlotConfigs.REFERENCE_SIZE, label='Expert Demonstrations')
 
-    for i, tr in enumerate(rollouts):
+    for i, tr in enumerate(rollouts): # TODO: Bugs here!
         plt.plot(tr[0, :, 0], tr[0, :, 1], linewidth=0.1, c=PlotConfigs.ROLLOUT_COLOR)
-        start_handle = plt.scatter(tr[0, 0, 0], tr[0, 0, 1], marker='x',
-                                   color=PlotConfigs.ANNOTATE_COLOR, linewidth=3, s=100,
-                                   label='Start')
+        # start_handle = plt.scatter(tr[0, 0, 0], tr[0, 0, 1], marker='x',
+        #                            color=PlotConfigs.ANNOTATE_COLOR, linewidth=3, s=100,
+        #                            label='Start')
 
     # generate the grid data
     x = np.linspace(grid_coordinates[0][0], grid_coordinates[0][1], grid_density)

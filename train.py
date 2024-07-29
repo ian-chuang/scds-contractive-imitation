@@ -11,7 +11,6 @@ from ren_continuous import CREN
 from ren_trainer import train_ren_model
 from cli import argument_parser
 from dataset import lasa_expert
-from plot import plot_trajectories, plot_policy
 
 
 # main entry
