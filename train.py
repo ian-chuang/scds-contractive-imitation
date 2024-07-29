@@ -2,8 +2,9 @@
 import os
 import torch
 
-from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
+from torch.utils.tensorboard import SummaryWriter
+from tslearn.metrics import SoftDTWLossPyTorch
 
 from ren_discrete import DREN
 from ren_continuous import CREN
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     # parse and set experiment arguments
     args = argument_parser()
 
-    # set expert traj (equal to ren horizon for now, TODO: Relax later with KL or other measures)
+    # set expert traj
     if args.expert == "lasa":
         dataloader = lasa_expert(motion_shape=args.motion_shape, horizon=args.horizon,
                                  device=args.device, batch_size=args.batch_size,
@@ -62,13 +63,17 @@ if __name__ == '__main__':
     writer_dir = f'{args.experiment_dir}/{experiment_name}'
     writer = SummaryWriter(writer_dir)
 
-    # training loop # TODO: make this more efficient using kwargs
+    # loss function
+    loss = torch.nn.MSELoss() if args.loss == "mse" else SoftDTWLossPyTorch(normalize=True, gamma=0.1)
+
+    # training loop
     ren_trained, ren_data = train_ren_model(model=model, lr=args.lr, horizon=args.horizon,
                                             expert_data=dataloader, total_epochs=args.total_epochs,
                                             lr_start_factor=args.lr_start_factor, writer=writer,
                                             lr_end_factor=args.lr_end_factor,
                                             patience_epoch=args.patience_epoch,
-                                            log_epoch=args.log_epoch)
+                                            log_epoch=args.log_epoch,
+                                            criterion=loss)
 
     ren_data["expert"] = args.expert
     ren_data["num_expert_trajectories"] = args.num_expert_trajectories

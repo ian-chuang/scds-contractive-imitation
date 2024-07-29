@@ -17,7 +17,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, horizon: int,
                     expert_data: DataLoader, total_epochs: int,
                     lr_start_factor: float, lr_end_factor: float,
                     patience_epoch: int, log_epoch: int,
-                    writer: SummaryWriter):
+                    writer: SummaryWriter, criterion = nn.Module):
     """ Train a discrete or continuous ren model.
 
     Args:
@@ -41,9 +41,6 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, horizon: int,
 
     # optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-
-    # loss
-    criterion = nn.MSELoss()
 
     # temps
     trajectories, train_losses = [], []
@@ -77,6 +74,10 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, horizon: int,
 
             # loss
             loss = criterion(out, expert_trajectory)
+
+            if loss.size(0) != 1:
+                loss = loss.mean()
+
             train_losses.append(loss.item())
 
             # best model
