@@ -10,7 +10,7 @@ from ren_continuous import CREN
 from cli import argument_parser
 from dataset import lasa_expert
 from plot import plot_trajectories, plot_policy
-
+from plot import smooth_trajectory
 
 # main entry
 if __name__ == '__main__':
@@ -103,8 +103,8 @@ if __name__ == '__main__':
                 policy_rollouts.append(rollouts_fixed)
                 policy_rollouts.append(rollouts_noisy)
 
-        plot_trajectories(rollouts=policy_rollouts, reference=expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'ic-rollouts-std{y_init_std}')
+                policy_rollouts.append(smooth_trajectory(rollouts_fixed))
+                policy_rollouts.append(smooth_trajectory(rollouts_noisy))
 
-        # TODO: patch grid plots
-        # plot_trajectories(rollouts=experiment_data['model']['train_trajectories'], reference=expert_trajectory, save_dir=writer_dir, plot_name=f'ic-train-std{y_init_std}')
+        plot_trajectories(rollouts=policy_rollouts, reference=expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'ic-rollouts-std{y_init_std}')
         plot_policy(ren_module, policy_rollouts, expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'global-rollouts-std{y_init_std}')

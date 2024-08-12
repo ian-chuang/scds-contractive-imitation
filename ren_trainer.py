@@ -56,7 +56,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, horizon: int,
     start_time = datetime.now()
 
     # patience and log epochs
-    patience_epoch = (total_epochs // 10) if patience_epoch is None else patience_epoch
+    patience_epoch = (total_epochs // 5) if patience_epoch is None else patience_epoch
     log_epoch = (total_epochs // 10) if log_epoch is None else log_epoch
 
     # training epochs
@@ -73,10 +73,7 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, horizon: int,
             out = model.forward_trajectory(u_in, y_init, horizon)
 
             # loss
-            loss = criterion(out, expert_trajectory)
-
-            if loss.size(0) != 1:
-                loss = loss.mean()
+            loss = criterion(out, expert_trajectory).mean()
 
             train_losses.append(loss.item())
 
