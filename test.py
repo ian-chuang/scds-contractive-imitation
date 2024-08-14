@@ -77,7 +77,8 @@ if __name__ == '__main__':
                                      num_aug_trajectories=0, batch_size=num_expert_trajectories)
 
         # test parameters
-        policy_rollouts = []
+        policy_rollouts_o = []
+        policy_rollouts_n = []
         num_rollouts = args.num_test_rollouts
         y_init_std = args.ic_test_std
 
@@ -100,11 +101,8 @@ if __name__ == '__main__':
                 rollouts_fixed = ren_module.forward_trajectory(u_in, y_init, rollouts_horizon).cpu()
 
                 # add to plots
-                policy_rollouts.append(rollouts_fixed)
-                policy_rollouts.append(rollouts_noisy)
+                policy_rollouts_o.append(rollouts_fixed)
+                policy_rollouts_n.append(smooth_trajectory(rollouts_noisy))
 
-                policy_rollouts.append(smooth_trajectory(rollouts_fixed))
-                policy_rollouts.append(smooth_trajectory(rollouts_noisy))
-
-        plot_trajectories(rollouts=policy_rollouts, reference=expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'ic-rollouts-std{y_init_std}')
-        plot_policy(ren_module, policy_rollouts, expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'global-rollouts-std{y_init_std}')
+        plot_trajectories(rollouts=[policy_rollouts_o, policy_rollouts_n], reference=expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'ic-rollouts-std{y_init_std}')
+        # plot_policy(ren_module, [policy_rollouts_o, policy_rollouts_n], expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'global-rollouts-std{y_init_std}')
