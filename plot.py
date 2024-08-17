@@ -194,7 +194,7 @@ def plot_trajectories_time(ren: REN, reference: np.ndarray, horizon: int, save_d
     plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE, dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
 
 def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
-                save_dir: str, plot_name: str, space_stretch: float = 0.5):
+                save_dir: str, plot_name: str, space_stretch: float = 1.0):
 
     # find trajectory limits
     x_min, x_max, y_min, y_max = find_limits(reference)
@@ -214,11 +214,28 @@ def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
     target_handle = plt.scatter(reference[0, -1, 0], reference[0, -1, 1], marker='*',
                                 color=PlotConfigs.ANNOTATE_COLOR, linewidth=1,
                                 s=(6 * PlotConfigs.ANNOTATE_SIZE), label='Start', zorder=2)
-    for tr in rollouts:
-        plt.plot(tr[0, :, 0], tr[0, :, 1], linewidth=0.1, c=PlotConfigs.ROLLOUT_COLOR, zorder=1)
-        start_handle = plt.scatter(tr[0, 0, 0], tr[0, 0, 1], marker='x',
-                                   color=PlotConfigs.ANNOTATE_COLOR,
-                                   linewidth=1, s=25, label='Start', zorder=2)
+
+     # plot original rollouts
+    rollouts_o = rollouts[0]
+    for tr in rollouts_o:
+        for batch_idx in range(tr.shape[0]):
+            plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_LINEWIDTH * 10,
+                     c=PlotConfigs.ROLLOUT_ORIGINAL_COLOR, zorder=1)
+
+            start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
+                            color=PlotConfigs.ANNOTATE_COLOR, linewidth=1,
+                            s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
+
+    # plot noisy rollouts
+    rollouts_n = rollouts[1]
+    for tr in rollouts_n:
+        for batch_idx in range(tr.shape[0]):
+            plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_LINEWIDTH,
+                     c=PlotConfigs.ROLLOUT_NOISY_COLOR, zorder=1)
+
+            start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
+                            color=PlotConfigs.ANNOTATE_COLOR, linewidth=1,
+                            s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
 
     # generate the grid data
     x = np.asarray([[x_min - 0.9 * space_stretch, x_max + 0.9 * space_stretch]])
@@ -243,9 +260,9 @@ def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
         start_handle = plt.scatter(trajectories[i, 0, 0], trajectories[i, 0, 1], marker='x',
                                    color=PlotConfigs.ANNOTATE_COLOR,
                                    linewidth=1, s=PlotConfigs.ANNOTATE_SIZE, label='Start')
-        plt.plot(trajectories[i, :, 0], trajectories[i, :, 1],  linewidth=0.1, c=PlotConfigs.ROLLOUT_COLOR)
+        plt.plot(trajectories[i, :, 0], trajectories[i, :, 1],  linewidth=0.1, c=PlotConfigs.ROLLOUT_NOISY_COLOR)
 
-    red_arrows = plt.Line2D([0], [0], color=PlotConfigs.ROLLOUT_COLOR,
+    red_arrows = plt.Line2D([0], [0], color=PlotConfigs.ROLLOUT_NOISY_COLOR,
                             linestyle='-', marker='>', label='Reproduced')
     blue_dots = plt.Line2D([0], [0], color=PlotConfigs.TRAJECTORY_COLOR,
                            marker='o', label='Expert Demonstrations')

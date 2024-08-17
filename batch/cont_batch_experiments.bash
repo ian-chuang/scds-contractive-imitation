@@ -4,6 +4,10 @@ python=/isaac-sim/python.sh
 basic_motions=("GShape" "DoubleBendedLine" "PShape" "Angle" "Sine" "Worm" "Snake" "NShape")
 mm_motions=("Multi_Models_1" "Multi_Models_2" "Multi_Models_3" "Multi_Models_4")
 
+# Switch to main dir
+cd .. || { echo "Failed to change directory"; exit 1; }
+echo "Current working directory: $(pwd)"
+
 # Useful command for killing all the background processes
 # ps aux | grep 'train.py' | awk '{print $2}' | xargs kill -9
 

@@ -4,6 +4,10 @@ python=/isaac-sim/python.sh
 basic_motions=("GShape" "DoubleBendedLine" "PShape" "Angle" "Sine" "Worm" "Snake" "NShape")
 mm_motions=("Multi_Models_1" "Multi_Models_2" "Multi_Models_3" "Multi_Models_4")
 
+# Switch to main dir
+cd .. || { echo "Failed to change directory"; exit 1; }
+echo "Current working directory: $(pwd)"
+
 # Useful command for killing all the background processes
 # ps aux | grep 'train.py' | awk '{print $2}' | xargs kill -9
 
@@ -27,10 +31,10 @@ mm_motions=("Multi_Models_1" "Multi_Models_2" "Multi_Models_3" "Multi_Models_4")
 basic_motions_correct=("DoubleBendedLine")
 for shape in "${basic_motions_correct[@]}"; do
     echo %%% Running experiments for $shape motion %%%
-    $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --motion-shape $shape --experiment-dir results/corrections/single_models --bijection --num-bijection-layers 8 --crate-lb 1.5  --num-expert-trajectories 4&
-    $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --motion-shape $shape --experiment-dir results/corrections/single_models --bijection --num-bijection-layers 8 --crate-lb 1.3  --num-expert-trajectories 4&
-    # $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --motion-shape $shape --experiment-dir results/corrections/single_models --bijection --num-bijection-layers 8 --crate-lb 1.3  --num-expert-trajectories 1&
-    # $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --motion-shape $shape --experiment-dir results/corrections/single_models --bijection --num-bijection-layers 8 --crate-lb 1.2  --num-expert-trajectories 1&
+    $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --motion-shape $shape --experiment-dir results/corrections/ --bijection --num-bijection-layers 8 --crate-lb 1.2  --num-expert-trajectories 4&
+    $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --motion-shape $shape --experiment-dir results/corrections/ --bijection --num-bijection-layers 8 --crate-lb 1.1  --num-expert-trajectories 4&
+    $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --motion-shape $shape --experiment-dir results/corrections/ --num-expert-trajectories 4&
+    $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --motion-shape $shape --experiment-dir results/corrections/ --bijection --num-bijection-layers 8  --num-expert-trajectories 4&
 done
 
 # Correction Multi model shape experiments

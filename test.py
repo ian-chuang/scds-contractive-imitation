@@ -105,4 +105,4 @@ if __name__ == '__main__':
                 policy_rollouts_n.append(smooth_trajectory(rollouts_noisy))
 
         plot_trajectories(rollouts=[policy_rollouts_o, policy_rollouts_n], reference=expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'ic-rollouts-std{y_init_std}')
-        # plot_policy(ren_module, [policy_rollouts_o, policy_rollouts_n], expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'global-rollouts-std{y_init_std}')
+        plot_policy(ren_module, [policy_rollouts_o, policy_rollouts_n], expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'global-rollouts-std{y_init_std}')

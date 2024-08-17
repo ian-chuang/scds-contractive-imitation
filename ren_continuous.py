@@ -103,8 +103,7 @@ class CREN(REN):
         Returns:
             torch.Tensor: Time derivative of x.
         """
-        u_in = torch.zeros((1, 2), device=self.device) # TODO: Remove this line and use the input argument
-
+        u_in = torch.zeros(self.x.size(0), 1, self.dim_in, device=self.device)
         w = torch.zeros(self.x.size(0), 1, self.dim_v, device=self.device)
 
         for i in range(self.dim_v):
@@ -112,7 +111,7 @@ class CREN(REN):
             w = w + (self.eye[i, :] * self.act(v)).unsqueeze(1)
 
         # state evolution
-        x_dot = (F.linear(x, self.A) + F.linear(w, self.B1) + F.linear(u_in, self.B2))
+        x_dot = F.linear(x, self.A) + F.linear(w, self.B1) + F.linear(u_in, self.B2)
 
         return x_dot
 
@@ -150,9 +149,10 @@ class CREN(REN):
         time_vector = torch.linspace(0.0, 1.0, horizon, device=self.device)
 
         x_sim = odeint(self, self.x, time_vector, method='dopri5', rtol=1e-4, atol=1e-4,
-                       adjoint_rtol=1e-4, adjoint_atol=1e-4)
+                       adjoint_rtol=1e-4, adjoint_atol=1e-4) # x_sim has dimension of (horizon, batch_size, 1, dim_x)
+
+        x_sim = torch.swapaxes(x_sim, 0, 1).squeeze(2)
         out = self.output(x_sim)
-        out = out.reshape(out.shape[1], out.shape[0], out.shape[3]) # TODO: Fix the reshape problem and dimensions in CREN
 
         return out
 
