@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from os import PathLike
-from typing import List
+from typing import Dict, List
 from tqdm import tqdm
 from scipy.signal import savgol_filter
 
@@ -49,11 +49,13 @@ class PlotConfigs:
     ANNOTATE_SIZE = 40
     TICKS_SIZE = 16
     LABEL_SIZE = 18
-    LEGEND_SIZE = 18
+    LEGEND_SIZE = 25
     TITLE_SIZE = 18
     FILE_TYPE = "png"
     REFERENCE_SIZE = 18
-    ROLLOUT_LINEWIDTH = 0.2
+    ROLLOUT_NOISY_LINEWIDTH = 0.2
+    ROLLOUT_ORIGINAL_LINEWIDTH = 2
+
 
 
 def find_limits(trajectory):
@@ -79,12 +81,9 @@ def find_limits(trajectory):
 
 
 def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
-                      save_dir: PathLike, plot_name: str, space_stretch = 0.2,
-                      show_legends: bool = False):
+                      save_dir: PathLike, plot_name: str, space_stretch = 0.1,
+                      show_legends: bool = False, no_ticks: bool = True):
     """ Plot the rollout and reference trajectories.
-
-    # TODO: Use REN to generate data here instead
-    # TODO: Animate maybe?
 
     Args:
         trajectories (List[np.ndarray]): Rollouts.
@@ -105,43 +104,161 @@ def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
     plt.grid()
 
     blue_dots = plt.scatter(reference[:, :, 0], reference[:, :, 1], s=PlotConfigs.REFERENCE_SIZE, marker='o',
-                c=PlotConfigs.TRAJECTORY_COLOR, label='Expert Data', zorder=2)
+                c=PlotConfigs.TRAJECTORY_COLOR, label='Expert data', zorder=2)
 
-    # plot original rollouts
-    rollouts_o = rollouts[0]
-    for tr in rollouts_o:
-        for batch_idx in range(tr.shape[0]):
-            plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_LINEWIDTH * 10,
-                     c=PlotConfigs.ROLLOUT_ORIGINAL_COLOR, zorder=1)
+    if rollouts is not None:
+        # plot original rollouts
+        rollouts_o = rollouts[0]
+        for tr in rollouts_o:
+            for batch_idx in range(tr.shape[0]):
+                o_rollouts_handle = plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_ORIGINAL_LINEWIDTH,
+                                            c=PlotConfigs.ROLLOUT_ORIGINAL_COLOR, zorder=1, label='True IC')
 
-            start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
-                            color=PlotConfigs.ANNOTATE_COLOR, linewidth=1,
-                            s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
+                start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
+                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=2,
+                                s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
 
-    # plot noisy rollouts
-    rollouts_n = rollouts[1]
-    for tr in rollouts_n:
-        for batch_idx in range(tr.shape[0]):
-            plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_LINEWIDTH,
-                     c=PlotConfigs.ROLLOUT_NOISY_COLOR, zorder=1)
+        # plot noisy rollouts
+        rollouts_n = rollouts[1]
+        for tr in rollouts_n:
+            for batch_idx in range(tr.shape[0]):
+                n_rollouts_handle = plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_NOISY_LINEWIDTH,
+                                            c=PlotConfigs.ROLLOUT_NOISY_COLOR, zorder=1, label='Noisy IC')
 
-            start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
-                            color=PlotConfigs.ANNOTATE_COLOR, linewidth=1,
-                            s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
+                start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
+                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=2,
+                                s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
 
 
 
     target_handle = plt.scatter(reference[0, -1, 0], reference[0, -1, 1], marker='*',
-                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=1,
+                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=2,
                                 s=(4 * PlotConfigs.ANNOTATE_SIZE), label='Target',
                                 zorder=3)
 
     if show_legends:
         plt.legend(fontsize=PlotConfigs.LEGEND_SIZE, loc='upper left',
-            handles=[blue_dots, start_handle, target_handle])
+            handles=[blue_dots, o_rollouts_handle[0], n_rollouts_handle[0], start_handle, target_handle])
 
     plt.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
+
+    if no_ticks:
+        plt.gca().set_xticklabels([])
+        plt.gca().set_yticklabels([])
+
     plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE, dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
+
+
+def plot_multiple_motions(rollout_sets: Dict[str, List[np.ndarray]], reference: np.ndarray,
+                          save_dir: PathLike, plot_name: str, space_stretch = 0.25,
+                          show_legends: bool = True, no_ticks: bool = True):
+    """ Plot the rollout and reference trajectories for multiple sets.
+
+    Args:
+        trajectories (List[np.ndarray]): Rollouts.
+        references (List[np.ndarray]): Reference.
+        save_dir (PathLike): Save directory.
+        plot_name (str): Name of the plot file.
+    """
+
+    # find trajectory limits
+    x_min, x_max, y_min, y_max = find_limits(reference)
+
+    # calibrate the axis
+    plt.figure(figsize=PlotConfigs.FIGURE_SIZE, dpi=PlotConfigs.FIGURE_DPI)
+
+    axes = plt.gca()
+    axes.set_xlim([x_min - space_stretch, x_max + space_stretch])
+    axes.set_ylim([y_min - space_stretch, y_max + space_stretch])
+    axes.grid()
+
+    blue_dots = plt.scatter(reference[:, :, 0], reference[:, :, 1], s=PlotConfigs.REFERENCE_SIZE * 5, marker='o',
+                c=PlotConfigs.TRAJECTORY_COLOR, label='Expert', zorder=2)
+
+    if show_legends:
+        plt.legend(fontsize=PlotConfigs.LEGEND_SIZE - 5, loc='upper right',
+            handles=[blue_dots])
+
+    plt.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
+
+    if no_ticks:
+        plt.gca().set_xticklabels([])
+        plt.gca().set_yticklabels([])
+
+    plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE, dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
+
+
+def plot_3d_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
+                         save_dir: PathLike, plot_name: str, space_stretch = 0.2,
+                         show_legends: bool = False):
+    """ Plot the rollout and reference trajectories for 3D data.
+
+    Args:
+        trajectories (List[np.ndarray]): Rollouts.
+        references (List[np.ndarray]): Reference.
+        save_dir (PathLike): Save directory.
+        plot_name (str): Name of the plot file.
+    """
+
+    # find trajectory limits
+    fig = plt.figure(figsize=PlotConfigs.FIGURE_SIZE, dpi=PlotConfigs.FIGURE_DPI)
+    ax = fig.add_subplot(111, projection='3d')
+
+    blue_dots = ax.scatter(reference[:, :, 0], reference[:, :, 1], reference[:, :, 2],
+                           s=PlotConfigs.REFERENCE_SIZE, marker='o', c=PlotConfigs.TRAJECTORY_COLOR,
+                           label='Expert data', zorder=2)
+
+    # TODO: add terminal points for robomimic
+
+    # plot original rollouts
+    rollouts_o = rollouts[0]
+    for tr in rollouts_o:
+        for batch_idx in range(tr.shape[0]):
+            rollout_dots = ax.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], tr[batch_idx, :, 2],
+                                      linewidth=PlotConfigs.ROLLOUT_NOISY_LINEWIDTH * 2, c=PlotConfigs.ROLLOUT_ORIGINAL_COLOR,
+                                      zorder=1, label='Policy Rollout')
+
+            start_handle = ax.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], tr[batch_idx, 0, 2],
+                                      marker='x', color=PlotConfigs.ANNOTATE_COLOR, linewidth=2,
+                                      s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
+
+    if show_legends:
+        ax.legend(fontsize=PlotConfigs.LEGEND_SIZE, loc='upper left',
+                  handles=[blue_dots, rollout_dots[0], start_handle])
+
+    ax.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
+    plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE,
+                dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
+
+
+def plot_mse_box(data: List[np.ndarray], labels: List[str], save_dir: PathLike, plot_name: str):
+    """ Plot box plots for MSE data.
+
+    Args:
+        data (List[np.ndarray]): Input data for the box plot. A list which contains multiple
+            numpy vectors, each representing a box.
+
+        labels (List[str]): Input labels for the box plot. A list which contains multiple
+        str labels, each tagging a box.
+
+        save_dir (PathLike): Save directory for the plot file.
+        plot_name (str): Name of the plot to be saved by.
+    """
+    plt.figure(figsize=(8, 2))
+    box = plt.boxplot(data, vert=False, patch_artist=True, showmeans=True)
+
+    # Customizing box colors
+    # colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+    colors = ['#0072B2', '#D55E00', '#E69F00', '#009E73', '#56B4E9']
+
+    for patch, color in zip(box['boxes'], colors):
+        patch.set_facecolor(color)
+
+    plt.yticks([1, 2, 3], labels)
+    plt.xlabel('Dynamic Time Warping (Soft-DTW)')
+
+    plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE,
+                dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
 
 
 def plot_trajectories_time(ren: REN, reference: np.ndarray, horizon: int, save_dir: PathLike, plot_name: str,
@@ -193,90 +310,7 @@ def plot_trajectories_time(ren: REN, reference: np.ndarray, horizon: int, save_d
 
     plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE, dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
 
-def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
-                save_dir: str, plot_name: str, space_stretch: float = 1.0):
-
-    # find trajectory limits
-    x_min, x_max, y_min, y_max = find_limits(reference)
-
-    # calibrate the axis
-    plt.figure(figsize=PlotConfigs.FIGURE_SIZE, dpi=PlotConfigs.FIGURE_DPI)
-
-    axes = plt.gca()
-    axes.set_xlim([x_min - space_stretch, x_max + space_stretch])
-    axes.set_ylim([y_min - space_stretch, y_max + space_stretch])
-    plt.grid()
-
-    # plot the reference trajectory
-    plt.scatter(reference[:, :, 0], reference[:, :, 1], color=PlotConfigs.TRAJECTORY_COLOR, marker='o',
-                s=PlotConfigs.REFERENCE_SIZE, label='Expert Demonstrations', zorder=1)
-
-    target_handle = plt.scatter(reference[0, -1, 0], reference[0, -1, 1], marker='*',
-                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=1,
-                                s=(6 * PlotConfigs.ANNOTATE_SIZE), label='Start', zorder=2)
-
-     # plot original rollouts
-    rollouts_o = rollouts[0]
-    for tr in rollouts_o:
-        for batch_idx in range(tr.shape[0]):
-            plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_LINEWIDTH * 10,
-                     c=PlotConfigs.ROLLOUT_ORIGINAL_COLOR, zorder=1)
-
-            start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
-                            color=PlotConfigs.ANNOTATE_COLOR, linewidth=1,
-                            s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
-
-    # plot noisy rollouts
-    rollouts_n = rollouts[1]
-    for tr in rollouts_n:
-        for batch_idx in range(tr.shape[0]):
-            plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_LINEWIDTH,
-                     c=PlotConfigs.ROLLOUT_NOISY_COLOR, zorder=1)
-
-            start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
-                            color=PlotConfigs.ANNOTATE_COLOR, linewidth=1,
-                            s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
-
-    # generate the grid data
-    x = np.asarray([[x_min - 0.9 * space_stretch, x_max + 0.9 * space_stretch]])
-    y = np.asarray([[y_min - 0.9 * space_stretch, y_max + 0.9 * space_stretch]])
-    X, Y = np.meshgrid(x, y)
-
-    data = np.concatenate([X.reshape(-1,1), Y.reshape(-1,1)], axis=1)
-    data = np.expand_dims(data, axis=0)
-
-    trajectories = []
-    horizon = ren.horizon
-    u_in = torch.zeros(1, 1, 2, device="cpu")
-
-    for d in tqdm(range(data.shape[1]), desc="Generating plot rollouts"):
-        data_point = np.expand_dims(data[:, d, :], axis=0)
-        traj = ren.forward_trajectory(u_in, torch.Tensor(data_point), horizon).detach().cpu().numpy()
-        trajectories.append(traj)
-
-    trajectories = np.concatenate(trajectories, 0)
-
-    for i in range(trajectories.shape[0]):
-        start_handle = plt.scatter(trajectories[i, 0, 0], trajectories[i, 0, 1], marker='x',
-                                   color=PlotConfigs.ANNOTATE_COLOR,
-                                   linewidth=1, s=PlotConfigs.ANNOTATE_SIZE, label='Start')
-        plt.plot(trajectories[i, :, 0], trajectories[i, :, 1],  linewidth=0.1, c=PlotConfigs.ROLLOUT_NOISY_COLOR)
-
-    red_arrows = plt.Line2D([0], [0], color=PlotConfigs.ROLLOUT_NOISY_COLOR,
-                            linestyle='-', marker='>', label='Reproduced')
-    blue_dots = plt.Line2D([0], [0], color=PlotConfigs.TRAJECTORY_COLOR,
-                           marker='o', label='Expert Demonstrations')
-
-    axes.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
-
-    # add legend with the custom handle
-    # plt.legend(fontsize=PlotConfigs.LEGEND_SIZE, loc='upper right',
-    #     handles=[green_arrows, red_arrows, blue_dots, start_handle, target_handle])
-
-    plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE, dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
-
-
-
+# TODO:
 # def plot_trajectories_animation(time_span, trajectories, colors, classes, lim=10.0):
 #     def animate_frame(t):
 #         ax.cla()
@@ -302,3 +336,6 @@ def plot_policy(ren, rollouts: List[np.ndarray], reference: np.ndarray,
 #     anim = FuncAnimation(fig, animate_frame, frames=len(time_span))
 #     plt.close(fig)
 #     return anim
+
+if __name__ == '__main__':
+    plot_mse_box()

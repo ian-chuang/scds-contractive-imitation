@@ -8,6 +8,8 @@ import torch.nn as nn
 
 class BijectionNet(nn.Sequential):
     """ A sequential container of flows based on coupling layers.
+
+    # NOTE: You use this one, which stacks the coupling layers.
     """
     def __init__(self, num_dims, num_blocks, num_hidden, device):
         self.num_dims = num_dims

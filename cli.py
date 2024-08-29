@@ -19,7 +19,7 @@ def argument_parser():
 
     # bijection args
     parser.add_argument('--bijection', action='store_true', default=False, help='Use bijection net before projecting the output.')
-    parser.add_argument('--num-bijection-layers', type=int, default=2, help='Number of hidden layers in the coupling layer design and blocks. Default is 2.')
+    parser.add_argument('--num-bijection-layers', type=int, default=4, help='Number of hidden layers in the coupling layer design and blocks. Default is 2.')
 
     # training args
     parser.add_argument('--total-epochs', type=int, default=10000, help='Total number of epochs for training. Default is 200.')
@@ -33,16 +33,18 @@ def argument_parser():
     parser.add_argument('--loss', type=str, default='mse', help='Training loss to be selected between "dtw" and "mse". Default is "mse".')
 
     # dataset args
-    parser.add_argument('--expert', type=str, default='lasa', help='Expert type. Default is "lasa".')
-    parser.add_argument('--motion-shape', type=str, default="CShape", help='Motion shape in LASA dataset. Choose from [Angle, CShape, GShape, Sine, Snake, Worm, etc].')
+    parser.add_argument('--expert', type=str, default='lasa', help='Expert type among ["lasa", "robomimic"]. Default is "lasa".')
+    parser.add_argument('--motion-shape', type=str, default="CShape", help='Motion shape in LASA or Robomimic dataset. Choose from ["Angle", "CShape", "GShape", "Sine", "Snake", "Worm", etc] for LASA and ["lift", "can", "transport", "square"] for robomimic.')
+    parser.add_argument('--dataset-key', type=str, default="eef_pos", help='Robomimic dataset keys in ["eef_pos", "eef_pos_ori", "joint_pos", "joint_pos_vel"]')
     parser.add_argument('--num-expert-samples', type=int, default=50, help='Number of samples per expert trajectories. Default is 50 for LASA dataset.')
-    parser.add_argument('--num-expert-trajectories', type=int, default=4, help='Number of expert trajectories for training. Default is 5 for LASA dataset.')
+    parser.add_argument('--num-expert-trajectories', type=int, default=None, help='Number of expert trajectories for training for either LASA or Robomimic data. Default is None.')
     parser.add_argument('--num-augment-trajectories', type=int, default=0, help='Number of augmented trajectories for training. Default is 0 for LASA dataset.')
 
     # test args
     parser.add_argument('--num-test-rollouts', type=int, default=20, help='Number of test rollouts for plots.')
     parser.add_argument('--ic-test-std', type=float, default=0.1, help='Initial condition std during test and plotting phase.')
     parser.add_argument('--load-model', type=str, default=None, help='If it is not set to None, a pretrained model will be loaded instead of training.')
+    parser.add_argument('--legends', action='store_true', default=False, help='Add legend to the plots.')
 
     args = parser.parse_args()
 

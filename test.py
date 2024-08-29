@@ -8,8 +8,8 @@ from ren_discrete import DREN
 from ren_continuous import CREN
 
 from cli import argument_parser
-from dataset import lasa_expert
-from plot import plot_trajectories, plot_policy
+from dataset import DatasetKeys, lasa_expert, robomimic_expert
+from plot import plot_trajectories, plot_policy, plot_3d_trajectories
 from plot import smooth_trajectory
 
 # main entry
@@ -56,25 +56,32 @@ if __name__ == '__main__':
         rollouts_horizon = experiment_data['model']['model_params']['horizon']
 
         # plot the training trajectories
-        try: #TODO: temporary structure to for backward compatibility
+        try: # TODO: temporary structure to for backward compatibility
             expert = experiment_data['model']['expert']
         except KeyError:
             expert = args.expert
 
-        try: #TODO: temporary for backward compatibility
+        try: # TODO: temporary for backward compatibility
             num_expert_trajectories = experiment_data['model']['num_expert_trajectories']
         except KeyError:
             num_expert_trajectories = args.num_expert_trajectories
 
         if expert == "lasa":
             try: # TODO: temporary structure to for backward compatibility
-                motion_type = experiment_data['motion_shape']
+                motion_type = experiment_data['model']['motion_shape']
             except KeyError:
                 motion_type = experiment_data['name'].split('-')[2]
 
             dataloader = lasa_expert(motion_type, experiment_data['model']['model_params']['horizon'],
                                      args.device, num_exp_trajectories=num_expert_trajectories,
                                      num_aug_trajectories=0, batch_size=num_expert_trajectories)
+
+        elif expert == "robomimic":
+            motion_type = experiment_data['model']['motion_shape']
+            dataloader = robomimic_expert(task=motion_type, device=args.device,
+                                          batch_size=args.batch_size,
+                                          dataset_keys=[DatasetKeys.EEF_POS.value],
+                                          n_demos=num_expert_trajectories)
 
         # test parameters
         policy_rollouts_o = []
@@ -104,5 +111,15 @@ if __name__ == '__main__':
                 policy_rollouts_o.append(rollouts_fixed)
                 policy_rollouts_n.append(smooth_trajectory(rollouts_noisy))
 
-        plot_trajectories(rollouts=[policy_rollouts_o, policy_rollouts_n], reference=expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'ic-rollouts-std{y_init_std}')
-        plot_policy(ren_module, [policy_rollouts_o, policy_rollouts_n], expert_trajectories.numpy(), save_dir=writer_dir, plot_name=f'global-rollouts-std{y_init_std}')
+        if expert == "lasa":
+            plot_trajectories(rollouts=[policy_rollouts_o, policy_rollouts_n],
+                              reference=expert_trajectories.numpy(),
+                              save_dir=writer_dir,
+                              plot_name=f'ic-rollouts-std{y_init_std}',
+                              show_legends=args.legends)
+
+        elif expert == "robomimic":
+            plot_3d_trajectories(rollouts=[policy_rollouts_o, policy_rollouts_n],
+                                 reference=expert_trajectories.numpy(),
+                                 save_dir=writer_dir,
+                                 plot_name=f'ic-rollouts-std{y_init_std}')

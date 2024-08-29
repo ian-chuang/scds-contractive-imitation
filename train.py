@@ -5,13 +5,12 @@ import torch
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from tslearn.metrics import SoftDTWLossPyTorch
-
 from ren_discrete import DREN
 from ren_continuous import CREN
 
-from ren_trainer import train_ren_model
 from cli import argument_parser
-from dataset import lasa_expert
+from ren_trainer import train_ren_model
+from dataset import DatasetKeys, lasa_expert, robomimic_expert
 
 
 # main entry
@@ -32,6 +31,27 @@ if __name__ == '__main__':
         ic, traj = next(iter(dataloader))
         print(f'Expert data size [{ic.shape}, {traj.shape}], total of {len(dataloader.dataset)} entries')
 
+    elif args.expert == "robomimic":
+        if args.dataset_key == "eef_pos":
+            dataset_keys = [DatasetKeys.EEF_POS.value]
+        elif args.dataset_key == "eef_pos_ori":
+            dataset_keys = [DatasetKeys.EEF_POS.value, DatasetKeys.EEF_QUAT.value]
+        elif args.dataset_key == "joint_pos":
+            dataset_keys = [DatasetKeys.JOINT_POS.value]
+        elif args.dataset_key == "joint_pos_vel":
+            dataset_keys = [DatasetKeys.JOINT_POS.value, DatasetKeys.JOINT_VEL.value]
+
+        dataloader = robomimic_expert(task=args.motion_shape, device=args.device,
+                                      batch_size=args.batch_size,
+                                      dataset_keys=dataset_keys,
+                                      n_demos=args.num_expert_trajectories)
+
+        # sanity check for the dataset
+        ic, traj = next(iter(dataloader))
+        print(f'Expert data size [{ic.shape}, {traj.shape}], total of {len(dataloader.dataset)} entries')
+
+        # temporary: set the horizon
+        # args.horizon = 100
     else:
         raise(NotImplementedError(f'Expert data is not available!'))
 
@@ -49,7 +69,7 @@ if __name__ == '__main__':
                      num_bijection_layers=args.num_bijection_layers)
 
     else:
-        raise(NotImplementedError('Please determine a correct model type: ["continuous", "discrete"]!'))
+        raise NotImplementedError('Please determine a correct model type: ["continuous", "discrete"]!')
 
     # send the model to device
     model.to(device=args.device)
@@ -81,7 +101,7 @@ if __name__ == '__main__':
     ren_data["num_augment_trajectories"] = args.num_augment_trajectories
     ren_data["ic_noise_rate"] = args.ic_noise_rate
 
-    if args.expert == "lasa":
+    if args.expert == "lasa" or args.expert == "robomimic":
         ren_data["motion_shape"] = args.motion_shape
     else:
         raise NotImplementedError(f'Expert is not fully implemented at this stage!')
