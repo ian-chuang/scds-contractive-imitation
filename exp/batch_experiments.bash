@@ -9,7 +9,7 @@ cd .. || { echo "Failed to change directory"; exit 1; }
 echo "Current working directory: $(pwd)"
 
 # Useful command for killing all the background processes
-# ps aux | grep 'train.py' | awk '{print $2}' | xargs kill -9
+# ps aux | grep 'nnds_training.py' | awk '{print $2}' | xargs kill -9
 
 # Basic motion shape experiments
 # for shape in "${basic_motions[@]}"; do
@@ -30,9 +30,9 @@ echo "Current working directory: $(pwd)"
 # Correction: Basic motion shape experiments
 basic_motions_correct=("Angle")
 for shape in "${basic_motions_correct[@]}"; do
-    echo %%% Running experiments for $shape motion %%%
-    $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --expert lasa --motion-shape $shape --experiment-dir results/corrections/ --bijection --num-bijection-layers 8 --crate-lb 2.0  --num-expert-trajectories 1&
-    $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --expert lasa --motion-shape $shape --experiment-dir results/corrections/ --bijection --num-bijection-layers 8 --crate-lb 1.8  --num-expert-trajectories 1&
+    # echo %%% Running experiments for $shape motion %%%
+    # $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --expert lasa --motion-shape $shape --experiment-dir results/corrections/ --bijection --num-bijection-layers 8 --crate-lb 2.0  --num-expert-trajectories 1&
+    # $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --expert lasa --motion-shape $shape --experiment-dir results/corrections/ --bijection --num-bijection-layers 8 --crate-lb 1.8  --num-expert-trajectories 1&
     # $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --motion-shape $shape --experiment-dir results/corrections/ --bijection --num-bijection-layers 8 --crate-lb 1.1  --num-expert-trajectories 4&
     # $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --motion-shape $shape --experiment-dir results/corrections/ --num-expert-trajectories 4&
     # $python train.py --model-type discrete  --device cuda:0  --dim-x 64  --total-epochs 30000 --motion-shape $shape --experiment-dir results/corrections/ --bijection --num-bijection-layers 8  --num-expert-trajectories 4&

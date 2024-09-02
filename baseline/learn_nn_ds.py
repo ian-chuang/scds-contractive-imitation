@@ -16,9 +16,6 @@ from nns.networks import NN, LNET
 from nns.euclidean_flows import init_sdsef_model
 from nns.deep_dynamics import joint_lpf_ds_model
 
-from utils.utils import mse
-from utils.log_config import logger
-
 
 class NL_DS:
     """ Approximation of a dynamical system using neural techniques approaches:
@@ -56,7 +53,7 @@ class NL_DS:
         # gpu params
         self.__cuda = gpu
         self.__device = 'cuda:0' if torch.cuda.is_available() and self.__cuda else 'cpu'
-        logger.info(f'Switching to {self.__device} for computation')
+        print(f'Switching to {self.__device} for computation')
 
         # network module
         self.__network_type = network
@@ -64,7 +61,7 @@ class NL_DS:
         self._initialize_network()
         self.__nn_module.to(self.__device)
 
-        logger.info(f'{network.upper()} network initialized')
+        print(f'{network.upper()} network initialized')
         self.__dataset: DataLoader = None
 
     def fit(self, trajectory: np.ndarray, velocity: np.ndarray, n_epochs: int = 200,
@@ -98,7 +95,7 @@ class NL_DS:
         criterion = nn.MSELoss()
 
         # start time
-        logger.info('Starting the policy training sequence')
+        print('Starting the policy training sequence')
         start_time = time.time()
 
         best_train_loss = np.inf
@@ -124,7 +121,7 @@ class NL_DS:
                 train_losses.append(loss.item())
 
                 if loss > loss_clip:
-                    logger.warn('Loss value is too large, reinitializing')
+                    print('Loss value is too large, reinitializing')
 
                     self._initialize_network()
                     optimizer = optim.Adam(self.__nn_module.parameters(), lr=lr_initial)
@@ -156,20 +153,20 @@ class NL_DS:
 
             # tracking the learning process
             if show_stats and epoch % stat_freq == 0:
-                par.set_description(f'Train > {(train_loss):.6f} | Test > {mse(self.__nn_module(trajectory_test), velocity_test) if trajectory_test is not None else 0:.6f} | Best > ({best_train_loss:.6f}, {best_train_epoch}) | LR > {scheduler.get_last_lr()[0]:.5f}')
+                print(f'# {epoch}: Train > {(train_loss):.6f} | Best > ({best_train_loss:.6f}, {best_train_epoch}) | LR > {scheduler.get_last_lr()[0]:.5f}')
 
             # keep track of stalled progress
             if epoch - best_train_epoch >= stop_threshold:
-                logger.info(f'No progress for a while, quitting the training loop.')
+                print(f'No progress for a while, quitting the training loop.')
                 break
 
             # react to nan loss values
             if train_loss == torch.nan or train_loss == torch.inf:
-                logger.info(f'Nan/Inf loss function acquired, reinitializing...')
+                print(f'Nan/Inf loss function acquired, reinitializing...')
                 self._initialize_network()
 
         total_time = time.time() - start_time
-        logger.info(f'Training concluded in {total_time:.4f} seconds')
+        print(f'Training concluded in {total_time:.4f} seconds')
 
         self.__nn_module = best_model
         self.__lpf = best_lpf

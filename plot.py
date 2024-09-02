@@ -46,7 +46,10 @@ class PlotConfigs:
     ROLLOUT_ORIGINAL_COLOR = '#ff7f00'
     ROLLOUT_NOISY_COLOR = 'grey'
     ANNOTATE_COLOR = 'black'
-    ANNOTATE_SIZE = 40
+    STAR_WIDTH = 2
+    STAR_SIZE = 480
+    CROSS_WIDTH = 10
+    CROSS_SIZE = 1
     TICKS_SIZE = 16
     LABEL_SIZE = 18
     LEGEND_SIZE = 25
@@ -86,8 +89,8 @@ def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
     """ Plot the rollout and reference trajectories.
 
     Args:
-        trajectories (List[np.ndarray]): Rollouts.
-        references (List[np.ndarray]): Reference.
+        rollouts (List[np.ndarray]): Rollout trajectories, noisy, true etc.
+        references (List[np.ndarray]): Reference trajectories.
         save_dir (PathLike): Save directory.
         plot_name (str): Name of the plot file.
     """
@@ -112,11 +115,11 @@ def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
         for tr in rollouts_o:
             for batch_idx in range(tr.shape[0]):
                 o_rollouts_handle = plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_ORIGINAL_LINEWIDTH,
-                                            c=PlotConfigs.ROLLOUT_ORIGINAL_COLOR, zorder=1, label='True IC')
+                                            c=PlotConfigs.ROLLOUT_ORIGINAL_COLOR, zorder=2, label='True IC')
 
                 start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
-                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=2,
-                                s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
+                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=PlotConfigs.CROSS_WIDTH,
+                                s=PlotConfigs.CROSS_SIZE, label='Start', zorder=3)
 
         # plot noisy rollouts
         rollouts_n = rollouts[1]
@@ -126,19 +129,78 @@ def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
                                             c=PlotConfigs.ROLLOUT_NOISY_COLOR, zorder=1, label='Noisy IC')
 
                 start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
-                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=2,
-                                s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
-
-
+                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=PlotConfigs.CROSS_WIDTH,
+                                s=PlotConfigs.CROSS_SIZE, label='Start', zorder=3)
 
     target_handle = plt.scatter(reference[0, -1, 0], reference[0, -1, 1], marker='*',
-                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=2,
-                                s=(4 * PlotConfigs.ANNOTATE_SIZE), label='Target',
+                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=PlotConfigs.STAR_WIDTH,
+                                s=PlotConfigs.STAR_SIZE, label='Target',
                                 zorder=3)
 
     if show_legends:
         plt.legend(fontsize=PlotConfigs.LEGEND_SIZE, loc='upper left',
-            handles=[blue_dots, o_rollouts_handle[0], n_rollouts_handle[0], start_handle, target_handle])
+                   handles=[blue_dots, o_rollouts_handle[0], n_rollouts_handle[0],
+                            start_handle, target_handle], facecolor='white', framealpha=1)
+
+    plt.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
+
+    if no_ticks:
+        plt.gca().set_xticklabels([])
+        plt.gca().set_yticklabels([])
+
+    plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE, dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
+
+
+
+def plot_start_template(reference: np.ndarray, save_dir: PathLike, plot_name: str,
+                        space_stretch = 0.1, show_legends: bool = True,
+                        no_ticks: bool = True):
+    """ Plot the rollout and reference trajectories.
+
+    Args:
+        references (List[np.ndarray]): Reference.
+        save_dir (PathLike): Save directory.
+        plot_name (str): Name of the plot file.
+    """
+
+    # find trajectory limits
+    x_min, x_max, y_min, y_max = find_limits(reference)
+
+    # calibrate the axis
+    plt.figure(figsize=PlotConfigs.FIGURE_SIZE, dpi=PlotConfigs.FIGURE_DPI)
+
+    axes = plt.gca()
+    axes.set_xlim([x_min - space_stretch, x_max + space_stretch])
+    axes.set_ylim([y_min - space_stretch, y_max + space_stretch])
+    plt.grid()
+
+    blue_dots = plt.scatter(reference[:, :, 0], reference[:, :, 1],
+                            s=PlotConfigs.REFERENCE_SIZE * 5, marker='o',
+                            c=PlotConfigs.TRAJECTORY_COLOR, label='        ', zorder=2)
+
+    # start_handle = plt.scatter(reference[0, 0, 0], reference[0, 0, 1], marker='x',
+    #                 color=PlotConfigs.ANNOTATE_COLOR, linewidth=25,
+    #                 s=8, label='Start', zorder=3)
+
+    target_handle = plt.scatter(reference[0, -1, 0], reference[0, -1, 1], marker='*',
+                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=PlotConfigs.STAR_WIDTH,
+                                s=PlotConfigs.STAR_SIZE, label='Target',
+                                zorder=3)
+
+    stable = plt.plot(reference[0, 0, 0], reference[0, 0, 1], linewidth=5,
+                c="#F08080", label='        ', zorder=2)
+
+    high_cont = plt.plot(reference[0, 0, 0], reference[0, 0, 1], linewidth=5,
+                c="#8B4513", label='        ', zorder=2)
+
+    low_cont = plt.plot(reference[0, 0, 0], reference[0, 0, 1], linewidth=5,
+                c="#F4A460", label='        ', zorder=2)
+
+    if show_legends:
+        plt.legend(fontsize=PlotConfigs.LEGEND_SIZE, loc='lower center',
+                   handles=[blue_dots, stable[0], high_cont[0], low_cont[0],
+                            ],
+                            ncol=2)
 
     plt.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
 

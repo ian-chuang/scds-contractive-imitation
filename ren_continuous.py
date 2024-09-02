@@ -7,18 +7,27 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torchdiffeq import odeint_adjoint as odeint
+from typing import Optional
 
 from ren import REN
 
-from bijection import BijectionNet
-
 
 class CREN(REN):
-    def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
-                 batch_size: int, posdef_tol: float = 5.0e-2, contraction_rate_lb: float = 0.0,
-                 add_bias: bool = False, linear_output: bool = True, device: str = "cpu",
-                 weight_init_std: float = 0.5, horizon: int = None, bijection: bool = False,
-                 num_bijection_layers: int = 0):
+    def __init__(self,
+                 dim_in: int,
+                 dim_out: int,
+                 dim_x: int,
+                 dim_v: int,
+                 batch_size: int,
+                 weight_init_std: Optional[float] = 0.5,
+                 linear_output: Optional[bool] = True,
+                 posdef_tol: Optional[float] = 0.001,
+                 contraction_rate_lb: Optional[float] = 0.0,
+                 add_bias: Optional[bool] = False,
+                 device: Optional[str] = "cpu",
+                 horizon: Optional[int] = None,
+                 bijection: Optional[bool] = False,
+                 num_bijection_layers: Optional[int] = 0):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
 

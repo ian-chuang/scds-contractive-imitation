@@ -13,11 +13,17 @@ from ren_discrete import DREN
 from ren_continuous import CREN
 
 
-def train_ren_model(model: Union[DREN, CREN], lr: float, horizon: int,
-                    expert_data: DataLoader, total_epochs: int,
-                    lr_start_factor: float, lr_end_factor: float,
-                    patience_epoch: int, log_epoch: int,
-                    writer: SummaryWriter, criterion = nn.Module):
+def train_ren_model(model: Union[DREN, CREN],
+                    lr: float,
+                    horizon: int,
+                    expert_data: DataLoader,
+                    total_epochs: int,
+                    lr_start_factor: float,
+                    lr_end_factor: float,
+                    patience_epoch: int,
+                    log_epoch: int,
+                    writer: SummaryWriter,
+                    criterion = nn.Module):
     """ Train a discrete or continuous ren model.
 
     Args:
@@ -34,7 +40,8 @@ def train_ren_model(model: Union[DREN, CREN], lr: float, horizon: int,
         patience_epoch (int): Tolerance toward no progress.
         log_epoch (int): Log rate in number of epochs.
 
-        device (str): Name of the computation device.
+        writer (SummaryWriter): TensorBoard writer for logging metrics and other information.
+        criterion (nn.Module): Loss function used for training the network.
     """
 
     print(f'Training { type(model).__name__} model for {total_epochs} epochs and horizon {horizon}')

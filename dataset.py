@@ -5,7 +5,7 @@ import torch
 import numpy as np
 
 from enum import Enum
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from scipy.spatial.transform import Rotation as R
 import torch.utils
@@ -25,9 +25,12 @@ class DatasetKeys(Enum):
 
 
 class RobomimicDataset(Dataset):
-    def __init__(self, task: str, data_root_dir: os.PathLike,
-                 dataset_keys: List[DatasetKeys], n_demos: Union[int, None],
-                 device: str = 'cuda:0'):
+    def __init__(self,
+                 task: str,
+                 data_root_dir: os.PathLike,
+                 dataset_keys: List[DatasetKeys],
+                 n_demos: Union[int, None],
+                 device: Optional[str] = 'cuda:0'):
         """ Robomimic torch dataset, customized to return batches of initial
         conditions and full trajectories in state-only mode.
 
@@ -160,9 +163,14 @@ def robomimic_expert(task: str, device: str, batch_size: int,
     return data_loader
 
 
-def lasa_expert(motion_shape: str, horizon: int, device: str, batch_size,
-                num_exp_trajectories: int, state_only: bool = True,
-                num_aug_trajectories: int = 0, ic_noise_rate: float = 0.00):
+def lasa_expert(motion_shape: str,
+                horizon: int,
+                device: str,
+                batch_size,
+                num_exp_trajectories: int,
+                state_only: Optional[bool] = True,
+                num_aug_trajectories: Optional[int] = 0,
+                ic_noise_rate: Optional[float] = 0.00):
     """ Dataset form the LASA handwriting dataset. This dataset is a good starting point
     but the state dimension is often 2 or 4.
 

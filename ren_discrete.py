@@ -6,15 +6,26 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from typing import Optional
 from ren import REN
 
 
 class DREN(REN):
-    def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
-                 batch_size: int, weight_init_std: float = 0.5, linear_output: bool = False,
-                 posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0, add_bias: bool = False,
-                 device: str = "cpu", horizon: int = None, bijection: bool = False,
-                 num_bijection_layers: int = 0):
+    def __init__(self,
+                 dim_in: int,
+                 dim_out: int,
+                 dim_x: int,
+                 dim_v: int,
+                 batch_size: int,
+                 weight_init_std: Optional[float] = 0.5,
+                 linear_output: Optional[bool] = True,
+                 posdef_tol: Optional[float] = 0.001,
+                 contraction_rate_lb: Optional[float] = 1.0,
+                 add_bias: Optional[bool] = False,
+                 device: Optional[str] = "cpu",
+                 horizon: Optional[int] = None,
+                 bijection: Optional[bool] = False,
+                 num_bijection_layers: Optional[int] = 0):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
 
@@ -42,12 +53,19 @@ class DREN(REN):
             weight_init_std (float, optional): Weight initialization. Set to 0.1 by default.
 
             linear_output (bool, optional): If set True, the output matrices are arranged in a way so that
-                the output is a linear transformation of the input. Defaults to False.
+                the output is a linear transformation of the state. Defaults to True.
             add_bias (bool, optional): If set True, the trainable b_xvy biases are added. Defaults to False.
 
             posdef_tol (float, optional): Positive and negligible scalar to force positive definite matrices.
             contraction_rate_lb (float, optional): Lower bound on the contraction rate. Defaults to 1.
             device(str, optional): Pass the name of the device. Defaults to cpu.
+
+            horizon (int, optional): Horizon for the forward simulation in the trajectory space.
+                Default is None.
+
+            bijection (bool, optional): If set True, enforces a bijective transformation. Defaults to False.
+            num_bijection_layers (int, optional): Number of layers in the bijective transformation.
+                Relevant only if `bijection` is True. Defaults to 0.
         """
         super().__init__(dim_in, dim_out, dim_x, dim_v, batch_size, weight_init_std, linear_output, posdef_tol,
                          contraction_rate_lb, add_bias, device, horizon, bijection, num_bijection_layers)
@@ -151,7 +169,10 @@ class DREN(REN):
 
         return y_out
 
-    def forward_trajectory(self, u_in: torch.Tensor, y_init: torch.Tensor, horizon: int):
+    def forward_trajectory(self,
+                           u_in: torch.Tensor,
+                           y_init: torch.Tensor,
+                           horizon: int):
         """ Get a trajectory of forward passes.
 
         First element can be either y_init, as used here, or y_1. Depends on the application.

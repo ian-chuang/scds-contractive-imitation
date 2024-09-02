@@ -2,17 +2,28 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from typing import Optional
 from abc import ABC, abstractmethod
 
 from bijection import BijectionNet
 
 
 class REN(nn.Module, ABC):
-    def __init__(self, dim_in: int, dim_out: int, dim_x: int, dim_v: int,
-                 batch_size: int, weight_init_std: float = 0.5, linear_output: bool = False,
-                 posdef_tol: float = 0.001, contraction_rate_lb: float = 1.0, add_bias: bool = False,
-                 device: str = "cpu", horizon: int = None, bijection: bool = False,
-                 num_bijection_layers: int = 0):
+    def __init__(self,
+                 dim_in: int,
+                 dim_out: int,
+                 dim_x: int,
+                 dim_v: int,
+                 batch_size: int,
+                 weight_init_std: Optional[float] = 0.5,
+                 linear_output: Optional[bool] = True,
+                 posdef_tol: Optional[float] = 0.001,
+                 contraction_rate_lb: Optional[float] = 1.0,
+                 add_bias: Optional[bool] = False,
+                 device: Optional[str] = "cpu",
+                 horizon: Optional[int] = None,
+                 bijection: Optional[bool] = False,
+                 num_bijection_layers: Optional[int] = 0):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
 
@@ -38,6 +49,13 @@ class REN(nn.Module, ABC):
             posdef_tol (float, optional): Positive and negligible scalar to force positive definite matrices.
             contraction_rate_lb (float, optional): Lower bound on the contraction rate. Defaults to 1.
             device(str, optional): Pass the name of the device. Defaults to cpu.
+
+            horizon (int, optional): Horizon for the forward simulation in the trajectory space.
+                Default is None.
+
+            bijection (bool, optional): If set True, enforces a bijective transformation. Defaults to False.
+            num_bijection_layers (int, optional): Number of layers in the bijective transformation.
+                Relevant only if `bijection` is True. Defaults to 0.
         """
         super().__init__()
 

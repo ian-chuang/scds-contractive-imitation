@@ -9,7 +9,7 @@ from ren_continuous import CREN
 
 from cli import argument_parser
 from dataset import DatasetKeys, lasa_expert, robomimic_expert
-from plot import plot_trajectories, plot_policy, plot_3d_trajectories
+from plot import plot_trajectories, plot_3d_trajectories, plot_start_template
 from plot import smooth_trajectory
 
 # main entry
@@ -98,7 +98,7 @@ if __name__ == '__main__':
             for _ in range(num_rollouts):
 
                 # set noisy initial condition for test
-                y_init_noisy = y_init + y_init_std * (2 * (torch.rand((batch_size, 1, experiment_data['model']['model_params']['dim_out']), device=args.device) - 0.5))
+                y_init_noisy = y_init + y_init_std * (2 * (torch.rand(y_init.shape, device=args.device) - 0.5))
 
                 # input is set to zero
                 u_in = torch.zeros((batch_size, 1, experiment_data['model']['model_params']['dim_in']), device=args.device)
@@ -108,10 +108,14 @@ if __name__ == '__main__':
                 rollouts_fixed = ren_module.forward_trajectory(u_in, y_init, rollouts_horizon).cpu()
 
                 # add to plots
-                policy_rollouts_o.append(rollouts_fixed)
+                policy_rollouts_o.append(smooth_trajectory(rollouts_fixed))
                 policy_rollouts_n.append(smooth_trajectory(rollouts_noisy))
 
         if expert == "lasa":
+            # plot_start_template(reference=expert_trajectories.numpy(),
+            #                     save_dir=writer_dir,
+            #                     plot_name=f'start')
+
             plot_trajectories(rollouts=[policy_rollouts_o, policy_rollouts_n],
                               reference=expert_trajectories.numpy(),
                               save_dir=writer_dir,
