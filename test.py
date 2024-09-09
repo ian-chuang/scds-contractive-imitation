@@ -2,7 +2,7 @@
 import os
 import torch
 
-from typing import List, Dict
+from typing import List, Dict, Union
 
 from ren_discrete import DREN
 from ren_continuous import CREN
@@ -91,25 +91,62 @@ if __name__ == '__main__':
 
         with torch.no_grad():
 
+            # load the initial conditions (if any)
+            y_inits_saved: Union[torch.tensor, None] = None
+            if os.path.exists(os.path.join(writer_dir, 'y_init.pt')):
+                y_inits_saved = torch.load(os.path.join(writer_dir, 'y_init.pt'))
+                print(f'Initial {y_inits_saved.shape} conditions loaded from file')
+
             # load the data as a single batch
             y_init, expert_trajectories = next(iter(dataloader))
             batch_size = y_init.size(0)
 
-            for _ in range(num_rollouts):
+            # input is set to zero
+            u_in = torch.zeros((batch_size, 1, experiment_data['model']['model_params']['dim_in']), device=args.device)
 
-                # set noisy initial condition for test
-                y_init_noisy = y_init + y_init_std * (2 * (torch.rand(y_init.shape, device=args.device) - 0.5))
+            if y_inits_saved is None or args.new_ic_test:
+                # initialize a list to store y_init_noisy
+                y_init_noisy_list = []
+                y_init_noisy_list.append(y_init)
 
-                # input is set to zero
-                u_in = torch.zeros((batch_size, 1, experiment_data['model']['model_params']['dim_in']), device=args.device)
+                for _ in range(num_rollouts):
+
+                    # set noisy initial condition for test
+                    y_init_noisy = y_init + y_init_std * (2 * (torch.rand(y_init.shape, device=args.device) - 0.5))
+
+                    # append the noisy initial conditions
+                    y_init_noisy_list.append(y_init_noisy.cpu())
+
+                    # generate rollouts
+                    rollouts_noisy = ren_module.forward_trajectory(u_in, y_init_noisy, rollouts_horizon).cpu()
+                    rollouts_fixed = ren_module.forward_trajectory(u_in, y_init, rollouts_horizon).cpu()
+
+                    # add to plots
+                    policy_rollouts_o.append(smooth_trajectory(rollouts_fixed))
+                    policy_rollouts_n.append(smooth_trajectory(rollouts_noisy))
+
+                # save the array
+                y_init_noisy_array = torch.cat(y_init_noisy_list, dim=0)
+                torch.save(y_init_noisy_array, os.path.join(writer_dir, 'y_init.pt'))
+
+            else:
+                # separate true and noisy
+                y_init = y_inits_saved[:batch_size]
+                y_init_noisy = y_inits_saved[batch_size:]
+
+                print(y_init.shape, y_init_noisy.shape)
 
                 # generate rollouts
+                u_in = torch.zeros((y_init_noisy.size(0), 1, experiment_data['model']['model_params']['dim_in']), device=args.device)
                 rollouts_noisy = ren_module.forward_trajectory(u_in, y_init_noisy, rollouts_horizon).cpu()
+
+                u_in = torch.zeros((batch_size, 1, experiment_data['model']['model_params']['dim_in']), device=args.device)
                 rollouts_fixed = ren_module.forward_trajectory(u_in, y_init, rollouts_horizon).cpu()
 
                 # add to plots
                 policy_rollouts_o.append(smooth_trajectory(rollouts_fixed))
                 policy_rollouts_n.append(smooth_trajectory(rollouts_noisy))
+
 
         if expert == "lasa":
             # plot_start_template(reference=expert_trajectories.numpy(),

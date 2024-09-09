@@ -45,6 +45,7 @@ def argument_parser():
     parser.add_argument('--ic-test-std', type=float, default=0.1, help='Initial condition std during test and plotting phase.')
     parser.add_argument('--load-model', type=str, default=None, help='If it is not set to None, a pretrained model will be loaded instead of training.')
     parser.add_argument('--legends', action='store_true', default=False, help='Add legend to the plots.')
+    parser.add_argument('--new-ic-test', action='store_true', default=False, help='Load the saved initial conditions for consistency with other baselines.')
 
     args = parser.parse_args()
 

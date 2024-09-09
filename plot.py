@@ -36,28 +36,36 @@ class PlotConfigs:
     """Hardcoded plot configurations.
     """
 
-    COLORS = ["blue", "orange", "green", "purple", "brown"]
-    FMTS = ['d--', 'o-', 's:', 'x-.', '*-', 'd--', 'o-']
-
     FIGURE_SIZE = (10, 10)
     FIGURE_DPI = 120
     POLICY_COLOR = 'grey'
+
     TRAJECTORY_COLOR = '#377eb8'
-    ROLLOUT_ORIGINAL_COLOR = '#ff7f00'
-    ROLLOUT_NOISY_COLOR = 'grey'
+    ROLLOUT_ORIGINAL_COLOR = '#EB791E'
+    ROLLOUT_NOISY_COLOR = '#FFBD57'
+
+    # TRAJECTORY_COLOR = '#0D3B66'
+    # ROLLOUT_ORIGINAL_COLOR = '#F95738'
+    # ROLLOUT_NOISY_COLOR = '#EE964B'
+
+    # TRAJECTORY_COLOR = '#1f78b4'
+    # ROLLOUT_ORIGINAL_COLOR = '#33a02c'
+    # ROLLOUT_NOISY_COLOR = '#88E590'
+
+
     ANNOTATE_COLOR = 'black'
-    STAR_WIDTH = 2
-    STAR_SIZE = 480
-    CROSS_WIDTH = 10
-    CROSS_SIZE = 1
+    STAR_WIDTH = 5
+    STAR_SIZE = 780
+    CROSS_WIDTH = 20
+    CROSS_SIZE = 100
     TICKS_SIZE = 16
     LABEL_SIZE = 18
     LEGEND_SIZE = 25
     TITLE_SIZE = 18
     FILE_TYPE = "png"
-    REFERENCE_SIZE = 18
-    ROLLOUT_NOISY_LINEWIDTH = 0.2
-    ROLLOUT_ORIGINAL_LINEWIDTH = 2
+    REFERENCE_SIZE = 100
+    ROLLOUT_NOISY_LINEWIDTH = 1.8
+    ROLLOUT_ORIGINAL_LINEWIDTH = 10
 
 
 
@@ -104,6 +112,8 @@ def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
     axes = plt.gca()
     axes.set_xlim([x_min - space_stretch, x_max + space_stretch])
     axes.set_ylim([y_min - space_stretch, y_max + space_stretch])
+    plt.xticks(np.linspace(x_min - space_stretch,  x_max + space_stretch, 6))
+    plt.yticks(np.linspace(y_min - space_stretch,  y_max + space_stretch, 6))
     plt.grid()
 
     blue_dots = plt.scatter(reference[:, :, 0], reference[:, :, 1], s=PlotConfigs.REFERENCE_SIZE, marker='o',
@@ -117,8 +127,8 @@ def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
                 o_rollouts_handle = plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_ORIGINAL_LINEWIDTH,
                                             c=PlotConfigs.ROLLOUT_ORIGINAL_COLOR, zorder=2, label='True IC')
 
-                start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
-                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=PlotConfigs.CROSS_WIDTH,
+                start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='o',
+                                color=PlotConfigs.ANNOTATE_COLOR,
                                 s=PlotConfigs.CROSS_SIZE, label='Start', zorder=3)
 
         # plot noisy rollouts
@@ -128,8 +138,8 @@ def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
                 n_rollouts_handle = plt.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], linewidth=PlotConfigs.ROLLOUT_NOISY_LINEWIDTH,
                                             c=PlotConfigs.ROLLOUT_NOISY_COLOR, zorder=1, label='Noisy IC')
 
-                start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='x',
-                                color=PlotConfigs.ANNOTATE_COLOR, linewidth=PlotConfigs.CROSS_WIDTH,
+                start_handle = plt.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], marker='o',
+                                color=PlotConfigs.ANNOTATE_COLOR,
                                 s=PlotConfigs.CROSS_SIZE, label='Start', zorder=3)
 
     target_handle = plt.scatter(reference[0, -1, 0], reference[0, -1, 1], marker='*',

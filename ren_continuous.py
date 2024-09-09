@@ -21,7 +21,7 @@ class CREN(REN):
                  batch_size: int,
                  weight_init_std: Optional[float] = 0.5,
                  linear_output: Optional[bool] = True,
-                 posdef_tol: Optional[float] = 0.001,
+                 posdef_tol: Optional[float] = 5.0e-2,
                  contraction_rate_lb: Optional[float] = 0.0,
                  add_bias: Optional[bool] = False,
                  device: Optional[str] = "cpu",
