@@ -138,6 +138,7 @@ class REN(nn.Module, ABC):
         Args:
             x_init (torch.Tensor): Initial value for x.
         """
+        # TODO: integerate the inverse of bijection layers if available
 
         x_init = torch.linalg.lstsq(self.C2,  y_init.squeeze(1).T)[0].T.unsqueeze(1)
         self.set_x_init(x_init)

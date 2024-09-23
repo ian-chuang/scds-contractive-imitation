@@ -83,7 +83,10 @@ class RobomimicDataset(Dataset):
         with h5py.File(data_dir, 'r') as file:
 
             # build the demonstration ids
-            n_demos = len(list(file["data"].keys())) if n_demos is None else n_demos
+            if n_demos is None:
+                n_demos = len(list(file["data"].keys()))
+                print(f'Selecting the default number of demonstrations: {n_demos}')
+
             demo_ids = [f'demo_{idx}' for idx in range(n_demos)]
 
             # load the sample
@@ -95,7 +98,8 @@ class RobomimicDataset(Dataset):
 
                 # store obs
                 self.initial_conditions.append(obs[:1, :])
-                self.expert_trajectories.append(obs[1:, :])
+                self.expert_trajectories.append(obs[:, :])
+                # print(obs[:1, :].shape, obs[:, :].shape)
 
         self.expert_trajectories = self.add_padding()
         print(f'Robomimic "{task}" dataset loaded with {n_demos} demos')

@@ -44,15 +44,6 @@ class PlotConfigs:
     ROLLOUT_ORIGINAL_COLOR = '#EB791E'
     ROLLOUT_NOISY_COLOR = '#FFBD57'
 
-    # TRAJECTORY_COLOR = '#0D3B66'
-    # ROLLOUT_ORIGINAL_COLOR = '#F95738'
-    # ROLLOUT_NOISY_COLOR = '#EE964B'
-
-    # TRAJECTORY_COLOR = '#1f78b4'
-    # ROLLOUT_ORIGINAL_COLOR = '#33a02c'
-    # ROLLOUT_NOISY_COLOR = '#88E590'
-
-
     ANNOTATE_COLOR = 'black'
     STAR_WIDTH = 5
     STAR_SIZE = 780
@@ -92,7 +83,7 @@ def find_limits(trajectory):
 
 
 def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
-                      save_dir: PathLike, plot_name: str, space_stretch = 0.1,
+                      save_dir: PathLike, plot_name: str, space_stretch = 0.5,
                       show_legends: bool = False, no_ticks: bool = True):
     """ Plot the rollout and reference trajectories.
 
@@ -262,7 +253,7 @@ def plot_multiple_motions(rollout_sets: Dict[str, List[np.ndarray]], reference: 
 
 def plot_3d_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
                          save_dir: PathLike, plot_name: str, space_stretch = 0.2,
-                         show_legends: bool = False):
+                         show_legends: bool = False, no_ticks: bool = True):
     """ Plot the rollout and reference trajectories for 3D data.
 
     Args:
@@ -283,22 +274,46 @@ def plot_3d_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
     # TODO: add terminal points for robomimic
 
     # plot original rollouts
-    rollouts_o = rollouts[0]
+    rollouts_o = rollouts[1]
     for tr in rollouts_o:
         for batch_idx in range(tr.shape[0]):
             rollout_dots = ax.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], tr[batch_idx, :, 2],
-                                      linewidth=PlotConfigs.ROLLOUT_NOISY_LINEWIDTH * 2, c=PlotConfigs.ROLLOUT_ORIGINAL_COLOR,
-                                      zorder=1, label='Policy Rollout')
+                                      linewidth=PlotConfigs.ROLLOUT_NOISY_LINEWIDTH,
+                                      c=PlotConfigs.ROLLOUT_NOISY_COLOR,
+                                      zorder=1, label='True IC')
 
             start_handle = ax.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], tr[batch_idx, 0, 2],
-                                      marker='x', color=PlotConfigs.ANNOTATE_COLOR, linewidth=2,
-                                      s=PlotConfigs.ANNOTATE_SIZE, label='Start', zorder=3)
+                                        marker='o', color=PlotConfigs.ANNOTATE_COLOR,
+                                        s=PlotConfigs.CROSS_SIZE, label='Start', zorder=3)
+
+    # plot noisy rollouts
+    rollouts_n = rollouts[0]
+    for tr in rollouts_n:
+        for batch_idx in range(tr.shape[0]):
+            rollout_dots = ax.plot(tr[batch_idx, :, 0], tr[batch_idx, :, 1], tr[batch_idx, :, 2],
+                                      linewidth=PlotConfigs.ROLLOUT_ORIGINAL_LINEWIDTH,
+                                      c=PlotConfigs.ROLLOUT_ORIGINAL_COLOR,
+                                      zorder=1, label='Noisy IC')
+
+            start_handle = ax.scatter(tr[batch_idx, 0, 0], tr[batch_idx, 0, 1], tr[batch_idx, 0, 2],
+                                        marker='o', color=PlotConfigs.ANNOTATE_COLOR,
+                                        s=PlotConfigs.CROSS_SIZE, label='Start', zorder=3)
+
+    target_handle = ax.scatter(reference[0, -1, 0], reference[0, -1, 1], reference[0, -1, 2], marker='*',
+                               color=PlotConfigs.ANNOTATE_COLOR, linewidth=PlotConfigs.STAR_WIDTH,
+                               s=PlotConfigs.STAR_SIZE, label='Target', zorder=3)
 
     if show_legends:
         ax.legend(fontsize=PlotConfigs.LEGEND_SIZE, loc='upper left',
                   handles=[blue_dots, rollout_dots[0], start_handle])
 
     ax.tick_params(axis='both', which='both', labelsize=PlotConfigs.TICKS_SIZE)
+
+    if no_ticks:
+        plt.gca().set_xticklabels([])
+        plt.gca().set_yticklabels([])
+        plt.gca().set_zticklabels([])
+
     plt.savefig(f'{save_dir}/{plot_name}.{PlotConfigs.FILE_TYPE}', format=PlotConfigs.FILE_TYPE,
                 dpi=PlotConfigs.FIGURE_DPI, bbox_inches='tight')
 

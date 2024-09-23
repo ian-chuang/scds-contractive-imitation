@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     # set expert traj
     if args.expert == "lasa":
-        dataloader = lasa_expert(motion_shape=args.motion_shape, horizon=args.horizon,
+        dataloader = lasa_expert(motion_shape=args.motion_shape, horizon=args.num_expert_samples,
                                  device=args.device, batch_size=args.batch_size,
                                  num_exp_trajectories=args.num_expert_trajectories,
                                  num_aug_trajectories=args.num_augment_trajectories,
@@ -97,6 +97,7 @@ if __name__ == '__main__':
                                             criterion=loss)
 
     ren_data["expert"] = args.expert
+    ren_data["num_expert_samples"] = args.num_expert_samples
     ren_data["num_expert_trajectories"] = args.num_expert_trajectories
     ren_data["num_augment_trajectories"] = args.num_augment_trajectories
     ren_data["ic_noise_rate"] = args.ic_noise_rate

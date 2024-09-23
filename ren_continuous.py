@@ -162,7 +162,6 @@ class CREN(REN):
 
         x_sim = torch.swapaxes(x_sim, 0, 1).squeeze(2)
         out = self.output(x_sim)
-
         return out
 
 

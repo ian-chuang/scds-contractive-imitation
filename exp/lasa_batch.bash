@@ -9,7 +9,9 @@ cd .. || { echo "Failed to change directory"; exit 1; }
 echo "Current working directory: $(pwd)"
 
 # Useful command for killing all the background processes
-# ps aux | grep 'nnds_training.py' | awk '{print $2}' | xargs kill -9
+# ps aux | grep 'train.py' | awk '{print $2}' | xargs kill -9
+
+# DISCRETE REN
 
 # Basic motion shape experiments
 # for shape in "${basic_motions[@]}"; do
@@ -61,4 +63,33 @@ basic_motions_correct=("CShape" "Sine")
 for shape in "${basic_motions_correct[@]}"; do
     $python train.py --model-type discrete --motion-shape $shape --device cuda:0  --dim-x 64 --total-epochs 15000 --experiment-dir boards/crate_disc --bijection --num-bijection-layers 8 --crate-lb 1.8  --num-expert-trajectories 1&
     $python train.py --model-type discrete --motion-shape $shape --device cuda:0  --dim-x 64 --total-epochs 15000 --experiment-dir boards/crate_disc --crate-lb 1.8  --num-expert-trajectories 1&
+done
+
+# CONTINUOUS REN
+
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Trapezoid --experiment-dir boards/cont --crate-lb 12.6 --bijection --num-bijection-layers 8 --num-expert-trajectories 4&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Zshape --experiment-dir boards/cont --crate-lb 12.6 --bijection --num-bijection-layers 8 --num-expert-trajectories 4&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_4 --experiment-dir boards/cont --crate-lb 12.6 --bijection --num-bijection-layers 8 --num-expert-trajectories 7&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Multi_Models_3 --experiment-dir boards/cont --crate-lb 12.6 --bijection --num-bijection-layers 8 --num-expert-trajectories 7&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Leaf_1 --experiment-dir boards/cont --crate-lb 8.6 --bijection --num-bijection-layers 8 --num-expert-trajectories 4&
+# $python train.py --model-type continuous --device cuda:0  --dim-x 32 --total-epochs 2000 --motion-shape Spoon --experiment-dir boards/cont --crate-lb 12.6 --bijection --num-bijection-layers 8 --num-expert-trajectories 4&
+
+
+# Basic motion shape experiments
+# for shape in "${basic_motions[@]}"; do
+#     echo %%% Running experiments for $shape motion %%%
+#     $python train.py --model-type continuous  --device cuda:0  --dim-x 64  --total-epochs 1000 --motion-shape $shape --experiment-dir boards/cont/new/single_models --bijection --num-bijection-layers 4 --crate-lb 12.6  --num-expert-trajectories 4&
+#     $python train.py --model-type continuous  --device cuda:0  --dim-x 64  --total-epochs 1000 --motion-shape $shape --experiment-dir boards/cont/new/single_models --bijection --num-bijection-layers 4 --crate-lb 14.6  --num-expert-trajectories 1&
+
+#     $python train.py --model-type continuous  --device cuda:0  --dim-x 64  --total-epochs 1000 --motion-shape $shape --experiment-dir boards/cont/new/single_models --bijection --num-bijection-layers 4 --crate-lb 5.6  --num-expert-trajectories 1&
+#     $python train.py --model-type continuous  --device cuda:0  --dim-x 64  --total-epochs 1000 --motion-shape $shape --experiment-dir boards/cont/new/single_models --bijection --num-bijection-layers 4 --crate-lb 5.6  --num-expert-trajectories 4&
+# done
+
+# Multi model shape experiments
+for shape in "${mm_motions[@]}"; do
+    echo %%% Running experiments for $shape motion %%%
+    $python train.py --model-type continuous  --device cuda:0  --dim-x 64  --total-epochs 1000 --motion-shape $shape --experiment-dir boards/cont_new/multi_models --bijection --num-bijection-layers 8 --crate-lb 14.6  --num-expert-trajectories 7&
+    $python train.py --model-type continuous  --device cuda:0  --dim-x 64  --total-epochs 1000 --motion-shape $shape --experiment-dir boards/cont_new/multi_models --bijection --num-bijection-layers 8 --crate-lb 16.6  --num-expert-trajectories 7&
+
+    # $python train.py --model-type continuous  --device cuda:0  --dim-x 64  --total-epochs 1000 --motion-shape $shape --experiment-dir boards/cont/new/multi_models --bijection --num-bijection-layers 8 --crate-lb 18.6  --num-expert-trajectories 7&
 done
