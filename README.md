@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # SCDS: State-only framework for learning Contractive Dynamical System policies through imitation
+=======
+# SCDS: Contractive Dynamical Imitation Policies with Out-of-Sample Recovery
+>>>>>>> 49e93fb (Pre-release commit)
 Imitating expert demonstrations with stability and predictability through learning a dynamical system has long been the center of attention. Yet, training a dynamical system to achieve stability and safety often required access to both states and its time derivative (eg, position and velocity). We propose leveraging the recently introduced Recurrent Equilibrium Networks (RENs) to achieve *state-only* imitation while providing global asymptotic stability through contraction theory. The approach hinges on differentiable ODE solvers, invertible coupling layers, and theoretical upper bounds for out-of-sample recovery.
 
 **The corresponding manuscript is under review at ICLR 2025.**
@@ -18,10 +22,10 @@ To reduce the overhead of installing different simulators and environments, we a
 ### Training
 ```bash
 # LASA expert data
-python train.py --device cuda:0 --total-epochs 500 --expert lasa --motion-shape Worm --num-expert-demonstration 1
+python train.py --model-type discrete --device cuda:0 --total-epochs 500 --expert lasa --motion-shape Worm --num-expert-demonstration 1
 
 # Robomimic expert data
-    python train.py --expert "robomimic" --motion-shape "lift"  --dim-in 3 --dim-out 3 --device cuda:0  --total-epochs 500 --bijection --num-bijection-layers 8 --crate-lb 12.0  --num-expert-trajectories 1 --horizon 20 --loss dtw &
+python train.py --model-type discrete --expert "robomimic" --motion-shape "lift"  --dim-in 3 --dim-out 3 --device cuda:0  --total-epochs 500 --bijection --num-bijection-layers 8 --crate-lb 12.0  --num-expert-trajectories 1 --horizon 20 --loss dtw &
 
 ```
 
@@ -86,9 +90,9 @@ A summary of key parameters may be found in the following. We use the same CLI i
 *Note*: The repository also provides an improved and efficient implementation of continuous and discrete recurrent equilibrium networks (REN). Check the following files.
 
 ```bash
-ren/ren.py # abstract REN class
-ren/ren_continuous.py # continuous REN with multiple shooting
-ren/ren_discrete.py # discrete ren REN multiple shooting
+source/model/ren.py # abstract REN class
+source/model/ren_continuous.py # continuous REN with multiple shooting
+source/model/ren_discrete.py # discrete ren REN multiple shooting
 ```
 
 These implementations are built upon:

@@ -9,8 +9,8 @@ from typing import Union
 
 from torch.utils.data import DataLoader
 
-from ren_discrete import DREN
-from ren_continuous import CREN
+from source.model.ren_discrete import DREN
+from source.model.ren_continuous import CREN
 
 
 def train_ren_model(model: Union[DREN, CREN],
