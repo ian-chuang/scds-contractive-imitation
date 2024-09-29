@@ -1,5 +1,6 @@
 """
     Code is modified from the original version by Galimberti et. al.
+
 """
 
 import torch
@@ -7,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from typing import Optional
-from ren import REN
+from source.model.ren import REN
 
 
 class DREN(REN):

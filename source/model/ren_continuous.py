@@ -1,5 +1,6 @@
 """
     Code is modified from the original version by Martinelli et. al.
+    https://github.com/DecodEPFL/NodeREN
 """
 
 import torch
@@ -9,7 +10,7 @@ import torch.nn.functional as F
 from torchdiffeq import odeint_adjoint as odeint
 from typing import Optional
 
-from ren import REN
+from source.model.ren import REN
 
 
 class CREN(REN):

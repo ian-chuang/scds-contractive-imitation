@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from typing import Optional
 from abc import ABC, abstractmethod
 
-from bijection import BijectionNet
+from source.model.bijection import BijectionNet
 
 
 class REN(nn.Module, ABC):
@@ -26,9 +26,6 @@ class REN(nn.Module, ABC):
                  num_bijection_layers: Optional[int] = 0):
         """ Initialize a recurrent equilibrium network. This can also be viewed as a single layer
         of a larger network.
-
-        # TODO: Redundancy in horizon should be removed
-        # TODO: Use kwargs to reduce argument redundancy
 
         This is an abstract class for CREN and DREN modules. Please refer to the named modules for
         specific implementations.

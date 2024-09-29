@@ -1,5 +1,5 @@
-""" An implementation of a coupling layer
-from RealNVP (https://arxiv.org/abs/1605.08803).
+"""
+    An implementation of a coupling layer from RealNVP (https://arxiv.org/abs/1605.08803).
 """
 
 import torch

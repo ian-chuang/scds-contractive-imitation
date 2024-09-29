@@ -5,12 +5,15 @@ import torch
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from tslearn.metrics import SoftDTWLossPyTorch
-from ren_discrete import DREN
-from ren_continuous import CREN
 
-from cli import argument_parser
-from ren_trainer import train_ren_model
-from dataset import DatasetKeys, lasa_expert, robomimic_expert
+from source.model.ren_discrete import DREN
+from source.model.ren_continuous import CREN
+
+from source.misc.cli import argument_parser
+from source.ren_trainer import train_ren_model
+
+from source.data.lasa import lasa_expert
+from source.data.robomimic import robomimic_expert, DatasetKeys
 
 
 # main entry

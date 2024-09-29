@@ -2,12 +2,12 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
+from tqdm import tqdm
 from os import PathLike
 from typing import Dict, List
-from tqdm import tqdm
 from scipy.signal import savgol_filter
 
-from ren import REN
+from source.model.ren import REN
 
 
 def smooth_trajectory(trajectory, window_length=5, polyorder=1):
@@ -83,7 +83,7 @@ def find_limits(trajectory):
 
 
 def plot_trajectories(rollouts: List[np.ndarray], reference: np.ndarray,
-                      save_dir: PathLike, plot_name: str, space_stretch = 0.5,
+                      save_dir: PathLike, plot_name: str, space_stretch = 0.1,
                       show_legends: bool = False, no_ticks: bool = True):
     """ Plot the rollout and reference trajectories.
 
