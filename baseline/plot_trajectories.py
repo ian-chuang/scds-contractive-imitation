@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from typing import Dict, List
 
-from ..plot import PlotConfigs
+from ..source.misc.plot import PlotConfigs
 
 
 def plot_trajectories(ds, reference: np.ndarray, space_stretch: float = 0.1,

@@ -4,13 +4,13 @@ import torch
 
 from typing import List, Dict
 
-from ren_discrete import DREN
-from ren_continuous import CREN
+from source.model.ren_discrete import DREN
+from source.model.ren_continuous import CREN
 
-from cli import argument_parser
-from dataset import DatasetKeys, lasa_expert
-from plot import plot_isolated_trajectories
-from plot import smooth_trajectory
+from source.misc.cli import argument_parser
+from source.data.lasa import DatasetKeys, lasa_expert
+from source.misc.plot import plot_isolated_trajectories
+from source.misc.plot import smooth_trajectory
 
 # main entry
 if __name__ == '__main__':

@@ -10,7 +10,7 @@ To help streamline the contribution process, please follow these steps:
 
 1. **Dependency Management**: Ensure any new installation or build dependencies are added to the docker image.
 2. **Documentation**: Update the ReadMe and tutorials with any changes that affect the interface or core functionality.
-3. **Code Style**: Maintain compatibility with the project's coding standards as outlined in the ReadMe file.
+3. **Code Style**: Maintain compatibility with the project's coding standards and [Python PEP 8 style guide](https://peps.python.org/pep-0008/).
 4. **Clarity and Readability**: Focus on writing clear, maintainable code that others can easily understand.
 5. **Pull Request Submission**: Once your work is complete, submit a pull request to merge your changes into the repository.
 

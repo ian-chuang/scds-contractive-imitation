@@ -51,8 +51,9 @@ python train.py --model-type discrete --device cuda:0 --total-epochs 500 --exper
 
 # Robomimic expert data
 python train.py --model-type discrete --expert "robomimic" --motion-shape "lift"  --dim-in 3 --dim-out 3 --device cuda:0  --total-epochs 500 --bijection --num-bijection-layers 8 --crate-lb 12.0  --num-expert-trajectories 1 --horizon 20 --loss dtw
-
 ```
+
+By default, the results of experiments are stored in a folder called *boards*.
 
 ### Testing and plots
 ```bash
