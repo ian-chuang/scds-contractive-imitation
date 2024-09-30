@@ -1,31 +1,56 @@
-<<<<<<< HEAD
-# SCDS: State-only framework for learning Contractive Dynamical System policies through imitation
-=======
 # SCDS: Contractive Dynamical Imitation Policies with Out-of-Sample Recovery
->>>>>>> 49e93fb (Pre-release commit)
 Imitating expert demonstrations with stability and predictability through learning a dynamical system has long been the center of attention. Yet, training a dynamical system to achieve stability and safety often required access to both states and its time derivative (eg, position and velocity). We propose leveraging the recently introduced Recurrent Equilibrium Networks (RENs) to achieve *state-only* imitation while providing global asymptotic stability through contraction theory. The approach hinges on differentiable ODE solvers, invertible coupling layers, and theoretical upper bounds for out-of-sample recovery.
 
 **The corresponding manuscript is under review at ICLR 2025.**
 
-## Docker setup
-To reduce the overhead of installing different simulators and environments, we already published a docker file containing all the required tools and libraries to run this codebase, and also to use Isaac Lab simulator. Our docker image is the modified version of the [Nvidia Isaac Sim docker](https://docs.omniverse.nvidia.com/isaacsim/latest/installation/install_container.html), nvcr.io/nvidia/isaac-sim:4.2.0.
+## Repository structure
+The [source](source/) folder contains the majority of model architectures and data manipulation files. The rest of the repo can be summarized as follows:
+```bash
+    ├── source       # Python source files of the project
+    |   ├── model    # Model implementations
+    |   ├── misc     # Plot and miscellaneous
+    |   ├── sim      # Simulation files
+    |   └── data     # Dataloader for LASA and Robomimic
+    |
+    ├── exp          # Batch experimentation files
+    ├── data         # Figures and other data, including trained policies
+    ├── CONTRIBUTING.md
+    └── README.md
+```
 
+## Basic setup
+The following command should automatically install a working version of the repository, without robotic simulations. The robomimic repository needs to be installed separately via [the installation guide](https://robomimic.github.io/docs/introduction/installation.html).
+
+```
+pip install -r requirements.txt
+```
+
+
+This is sufficient to train policies on Robomimic and LASA datasets, and visualize the results like the following.
+
+![Trained contractive policies on LASA dataset](data/test_rollouts/scds_lasa_policies.png "Trained contractive policies on LASA dataset")
+
+
+## Docker setup (optional)
+
+**NOTE**: Setting up the Docker image is optional, and is required to have Isaac Lab robot simulations.
+To reduce the overhead of installing different simulators and environments, we already published a docker file containing all the required tools and libraries to run this codebase, and also to use Isaac Lab simulator. Our docker image is the modified version of the [Nvidia Isaac Sim docker](https://docs.omniverse.nvidia.com/isaacsim/latest/installation/install_container.html), nvcr.io/nvidia/isaac-sim:4.2.0. It is required to do robotic simulations with Franka and Jackal robots.
+
+![Parallel testing of the learned policies on real robots](data/test_rollouts/franka_parallel.png "Parallel testing of the learned policies on real robots")
 
 ### Pull docker image from DockerHub
-**NOTE: Removed for anonymity, available as part of supplementary materials**
-
-### Download the DockerImage
+**NOTE: Removed for anonymity, will be made public on DockerHub after the review process**
 
 
-## Basic usage
+## Getting started
 
 ### Training
 ```bash
 # LASA expert data
-python train.py --model-type discrete --device cuda:0 --total-epochs 500 --expert lasa --motion-shape Worm --num-expert-demonstration 1
+python train.py --model-type discrete --device cuda:0 --total-epochs 500 --expert lasa --motion-shape Worm --num-expert-trajectories 1
 
 # Robomimic expert data
-python train.py --model-type discrete --expert "robomimic" --motion-shape "lift"  --dim-in 3 --dim-out 3 --device cuda:0  --total-epochs 500 --bijection --num-bijection-layers 8 --crate-lb 12.0  --num-expert-trajectories 1 --horizon 20 --loss dtw &
+python train.py --model-type discrete --expert "robomimic" --motion-shape "lift"  --dim-in 3 --dim-out 3 --device cuda:0  --total-epochs 500 --bijection --num-bijection-layers 8 --crate-lb 12.0  --num-expert-trajectories 1 --horizon 20 --loss dtw
 
 ```
 
@@ -101,7 +126,7 @@ These implementations are built upon:
 
 
 ## Contribution guide
-We welcome contributions that improve or extend SCDS in any way. Please refer to [Contribution.md](Contribution.md) for more information on this.
+We welcome contributions that improve or extend SCDS. Please refer to [Contribution.md](Contribution.md) for more information on this.
 
 ## Corresponding authors
-**NOTE: Removed for anonymity, available as part of supplementary materials**
+**NOTE: Removed for anonymity, available after the review process**
