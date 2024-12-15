@@ -1,10 +1,15 @@
-# SCDS: Contractive Dynamical Imitation Policies with Out-of-Sample Recovery
+# SCDS: Learning Contractive Dynamical Imitation Policies
+
 Imitating expert demonstrations with stability and predictability through learning a dynamical system has long been the center of attention. Yet, training a dynamical system to achieve stability and safety often required access to both states and its time derivative (eg, position and velocity). We propose leveraging the recently introduced Recurrent Equilibrium Networks (RENs) to achieve *state-only* imitation while providing global asymptotic stability through contraction theory. The approach hinges on differentiable ODE solvers, invertible coupling layers, and theoretical upper bounds for out-of-sample recovery.
 
-**The corresponding manuscript is under review at ICLR 2025.**
+**☑️ Check out [our website](https://sites.google.com/view/contractive-dynamical-policies) for highlight of experiments and results.**
 
-## Repository structure
+**⏳ The paper is [under review at ICLR 2025](https://openreview.net/forum?id=lILEtkWOXD&referrer=%5BAuthor%20Console%5D(%2Fgroup%3Fid%3DICLR.cc%2F2025%2FConference%2FAuthors%23your-submissions)).**
+
+## 🗃 Repository structure
+
 The [source](source/) folder contains the majority of model architectures and data manipulation files. The rest of the repo can be summarized as follows:
+
 ```bash
     ├── source       # Python source files of the project
     |   ├── model    # Model implementations
@@ -18,33 +23,56 @@ The [source](source/) folder contains the majority of model architectures and da
     └── README.md
 ```
 
-## Basic setup
+
+## ⚙️ Basic setup
+
 The following command should automatically install a working version of the repository, without robotic simulations. The robomimic repository needs to be installed separately via [the installation guide](https://robomimic.github.io/docs/introduction/installation.html).
 
-```
+```bash
 pip install -r requirements.txt
 ```
 
-
-This is sufficient to train policies on Robomimic and LASA datasets, and visualize the results like the following.
+➡️ This is sufficient to train policies on Robomimic and LASA datasets, and visualize the results like the following.
 
 ![Trained contractive policies on LASA dataset](data/test_rollouts/scds_lasa_policies.png "Trained contractive policies on LASA dataset")
 
+## 📦 Docker setup (optional)
+Our docker image is the modified version of the [Nvidia Isaac Sim docker](https://docs.omniverse.nvidia.com/isaacsim/latest/installation/install_container.html), nvcr.io/nvidia/isaac-sim:4.2.0. It is required to do robotic simulations with Franka and Jackal robots.
 
-## Docker setup (optional)
-
-**NOTE**: Setting up the Docker image is optional, and is required to have Isaac Lab robot simulations.
-To reduce the overhead of installing different simulators and environments, we already published a docker file containing all the required tools and libraries to run this codebase, and also to use Isaac Lab simulator. Our docker image is the modified version of the [Nvidia Isaac Sim docker](https://docs.omniverse.nvidia.com/isaacsim/latest/installation/install_container.html), nvcr.io/nvidia/isaac-sim:4.2.0. It is required to do robotic simulations with Franka and Jackal robots.
+📝 Setting up the Docker image is optional, and is required to have Isaac Lab robot simulations.
+To reduce the overhead of installing different simulators and environments, we already published a docker file containing all the required tools and libraries to run this codebase, and also to use Isaac Lab simulator.
 
 ![Parallel testing of the learned policies on real robots](data/test_rollouts/franka_parallel.png "Parallel testing of the learned policies on real robots")
 
 ### Pull docker image from DockerHub
-**NOTE: Removed for anonymity, will be made public on DockerHub after the review process**
 
+Pull the following docker image, which already includes all required packages.
 
-## Getting started
+```bash
+docker pull aabyaneh750/scds:1.0
+```
+
+Execute the docker and link clone this repo in ```isaac_sim``` directory. The following command ensures the GPU is set up properly.
+
+```bash
+docker run --name satriales  --entrypoint bash -ti -d --runtime=nvidia
+    -e "ACCEPT_EULA=Y" --rm --network=host -e "PRIVACY_CONSENT=Y"
+    -v ~/docker/isaac-sim/cache/kit:/isaac-sim/kit/cache:rw
+    -v ~/docker/isaac-sim/cache/ov:/root/.cache/ov:rw
+    -v ~/docker/isaac-sim/cache/pip:/root/.cache/pip:rw
+    -v ~/docker/isaac-sim/cache/glcache:/root/.cache/nvidia/GLCache:rw
+    -v ~/docker/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw
+    -v ~/docker/isaac-sim/logs:/root/.nvidia-omniverse/logs:rw
+    -v ~/docker/isaac-sim/data:/roo/t.local/share/ov/data:rw
+    -v REPLACE_HOST_DIR:/isaac-sim/:rw REPLACE_IMAGE_NAME
+```
+
+➡️ See Nvidia Isaac Sim docker](https://docs.omniverse.nvidia.com/isaacsim/latest/installation/install_container.html) for details.
+
+## 🚀 Getting started
 
 ### Training
+
 ```bash
 # LASA expert data
 python train.py --model-type discrete --device cuda:0 --total-epochs 500 --expert lasa --motion-shape Worm --num-expert-trajectories 1
@@ -56,20 +84,25 @@ python train.py --model-type discrete --expert "robomimic" --motion-shape "lift"
 By default, the results of experiments are stored in a folder called *boards*.
 
 ### Testing and plots
+
 ```bash
 python test.py --load-model data/trained_policy/dren-lasa-Worm-h50-x64-e15000-b16-cr1.0-e1-s50-a0-t11-0839/best_model.pth
 ```
 
-## Command line arguments
+## 🎛 Command line parameters
+
 To enable curious readers of our work to explore different setups, we provide access to a comprehensive set of model and experiment parameters through the command line interface. ```cli.py``` encompasses all these options, and a summary of key items is shown below.
 
-## Train parameters
+### Train parameters
+
 Use the following command to get the full list of possible arguments.
+
 ```bash
 python train.py --help
 ```
 
 The key arguments are summarized below.
+
 ```bash
   # model
   --model-type MODEL_TYPE
@@ -97,7 +130,8 @@ The key arguments are summarized below.
                         Robomimic dataset keys in ["eef_pos", "eef_pos_ori", "joint_pos", "joint_pos_vel"]
 ```
 
-## Test parameters
+### Test parameters
+
 A summary of key parameters may be found in the following. We use the same CLI interface for train and test to remain consistent, but that means there are some train parameters which remain unused during test and vice versa.
 
 ```bash
@@ -112,8 +146,9 @@ A summary of key parameters may be found in the following. We use the same CLI i
 ```
 
 
-## REN implementations
-*Note*: The repository also provides an improved and efficient implementation of continuous and discrete recurrent equilibrium networks (REN). Check the following files.
+## 🚧 REN implementations
+
+📝 The repository also provides an improved and efficient implementation of continuous and discrete recurrent equilibrium networks (REN). Check the following files.
 
 ```bash
 source/model/ren.py # abstract REN class
@@ -122,12 +157,21 @@ source/model/ren_discrete.py # discrete ren REN multiple shooting
 ```
 
 These implementations are built upon:
-* [https://github.com/DecodEPFL/NodeREN](https://github.com/DecodEPFL/NodeREN)
-* [https://github.com/DecodEPFL/perf-boost-base](https://github.com/DecodEPFL/perf-boost-base)
+* [github.com/DecodEPFL/NodeREN](https://github.com/DecodEPFL/NodeREN)
+* [github.com/DecodEPFL/perf-boost-base](https://github.com/DecodEPFL/perf-boost-base)
 
 
-## Contribution guide
-We welcome contributions that improve or extend SCDS. Please refer to [Contribution.md](Contribution.md) for more information on this.
+## 🤝 Contribution guide
 
-## Corresponding authors
-**NOTE: Removed for anonymity, available after the review process**
+We welcome contributions that improve or extend SCDS.
+
+➡️ Please refer to [Contribution.md](Contribution.md) for more information on this.
+
+## 📖 Citation and authors
+
+```tex
+
+```
+* Amin Abyaneh
+* Mahrokh G. Boroujeni
+* Hsiu-Chin
