@@ -67,7 +67,7 @@ docker run --name satriales  --entrypoint bash -ti -d --runtime=nvidia
     -v REPLACE_HOST_DIR:/isaac-sim/:rw REPLACE_IMAGE_NAME
 ```
 
-➡️ See Nvidia Isaac Sim docker](https://docs.omniverse.nvidia.com/isaacsim/latest/installation/install_container.html) for details.
+➡️ See [Nvidia Isaac Sim docker](https://docs.omniverse.nvidia.com/isaacsim/latest/installation/install_container.html) for details.
 
 ## 🚀 Getting started
 
