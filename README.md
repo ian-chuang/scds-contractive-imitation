@@ -4,7 +4,7 @@ Imitating expert demonstrations with stability and predictability through learni
 
 **☑️ Check out [our website](https://sites.google.com/view/contractive-dynamical-policies) for highlight of experiments and results.**
 
-**⏳ The paper is [under review at ICLR 2025](https://openreview.net/forum?id=lILEtkWOXD&referrer=%5BAuthor%20Console%5D(%2Fgroup%3Fid%3DICLR.cc%2F2025%2FConference%2FAuthors%23your-submissions)).**
+**🚀 Our paper is [published at ICLR 2025](https://openreview.net/forum?id=lILEtkWOXD&referrer=%5BAuthor%20Console%5D(%2Fgroup%3Fid%3DICLR.cc%2F2025%2FConference%2FAuthors%23your-submissions)).**
 
 ## 🗃 Repository structure
 
@@ -170,8 +170,13 @@ We welcome contributions that improve or extend SCDS.
 ## 📖 Citation and authors
 
 ```tex
-
+@inproceedings{abyaneh2025contractive,
+title={Contractive Dynamical Imitation Policies for Efficient Out-of-Sample Recovery},
+author={Amin Abyaneh and Mahrokh Ghoddousi Boroujeni and Hsiu-Chin Lin and Giancarlo Ferrari-Trecate},
+booktitle={The Thirteenth International Conference on Learning Representations},
+year={2025},
+url={https://openreview.net/forum?id=lILEtkWOXD}}
 ```
-* Amin Abyaneh
-* Mahrokh G. Boroujeni
+* Amin Abyaneh (corresponding author)
+* Mahrokh G. Boroujeni (corresponding author)
 * Hsiu-Chin
